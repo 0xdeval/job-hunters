@@ -1,0 +1,13 @@
+.env
+data/
+.tmp/
+__pycache__/
+*.pyc
+.DS_Store
+*.pdf
+*.tex
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk

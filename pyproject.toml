@@ -1,0 +1,24 @@
+[project]
+name = "job_hunting"
+version = "0.1.0"
+description = "job-hunting using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[tools]==1.9.3",
+    "python-telegram-bot>=21.0",
+    "chainlit>=1.0",
+    "python-dotenv",
+]
+
+[project.scripts]
+job_hunting_discover = "job_hunting.main:run_discovery"
+job_hunting_bot      = "job_hunting.main:run_bot"
+job_hunting_advisor  = "job_hunting.main:run_advisor"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "flow"
