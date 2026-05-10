@@ -1,0 +1,69 @@
+scrape_vacancies_task:
+  description: >
+    Today's date is {today}. You are discovering new job vacancies.
+
+    1. Read the file knowledge/companies.csv. It contains columns: company_name, career_page_url.
+    2. For each company, use SeleniumScrapingTool to scrape the career_page_url and extract
+       all open job positions (title, job-specific URL, brief description snippet).
+    3. For each vacancy found:
+       a. Use Vacancy Dedup Checker with the vacancy URL. If result is "duplicate", skip entirely.
+       b. Use SeleniumScrapingTool to open the job-specific URL. Read the page content.
+          If the page shows the job is closed, filled, or returns an error, skip entirely.
+       c. Extract: full job description, required skills, any explicit application questions
+          (e.g. "Why do you want to work here?"), and whether a cover letter is requested.
+       d. Generate a vacancy ID as: lowercase company name and title, spaces and
+          special chars replaced with hyphens, double-hyphen between company and title.
+          Example: "Acme Corp" + "Senior PM" -> "acme-corp--senior-pm"
+       e. Write a JSON file to data/{today}/vacancies/{vacancy_id}.json with this exact schema:
+          {
+            "id": "{vacancy_id}",
+            "company": "{company_name}",
+            "title": "{job_title}",
+            "url": "{job_url}",
+            "description": "{full_job_description}",
+            "questions": ["{question1}", "{question2}"],
+            "scraped_at": "{ISO8601 timestamp}"
+          }
+          If there are no application questions, use an empty list [].
+    4. Return a JSON list of all vacancy IDs that were successfully saved.
+  expected_output: >
+    A JSON list of vacancy IDs saved, e.g. ["acme-corp--senior-pm", "gnosis--head-of-product"].
+    Return an empty list [] if no new vacancies were found.
+  agent: vacancy_scout
+
+score_vacancies_task:
+  description: >
+    Today's date is {today}. Score all newly discovered vacancies.
+
+    The previous task returned a list of vacancy IDs (e.g. ["acme-corp--senior-pm"]).
+    For each vacancy ID, read the file at data/{today}/vacancies/{vacancy_id}.json
+    using FileReadTool with the exact path.
+    Also read knowledge/search-criteria.md and knowledge/profile/profile-summary.md.
+
+    For each vacancy:
+      a. Score it 0-100 based on fit with the candidate's profile and search criteria.
+         Consider: role title match, seniority, location/remote preference, industry,
+         company stage, salary range, excluded criteria from search-criteria.md.
+      b. Determine requires_cover_letter: true if the job description explicitly asks
+         for one, false otherwise.
+      c. Set status to "skipped" if score is clearly below criteria (do not send to Telegram).
+         Otherwise set status to "pending_approval".
+      d. Write a JSON file to data/{today}/scores/{vacancy_id}.json with this schema:
+         {
+           "vacancy_id": "{vacancy_id}",
+           "date": "{today}",
+           "company": "{company_name}",
+           "title": "{job_title}",
+           "score": {integer 0-100},
+           "reasoning": "{brief explanation of score}",
+           "status": "pending_approval",
+           "requires_cover_letter": {true or false}
+         }
+    Return a JSON list of score file paths for vacancies with status "pending_approval".
+  expected_output: >
+    A JSON list of score file paths for qualifying vacancies, e.g.
+    ["data/2026-05-10/scores/acme-corp--senior-pm.json"].
+    Return [] if no vacancies qualify.
+  agent: fit_analyst
+  context:
+    - scrape_vacancies_task
