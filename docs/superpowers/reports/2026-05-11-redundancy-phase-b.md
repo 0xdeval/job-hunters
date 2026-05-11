@@ -33,3 +33,5 @@
 - Outcome 1: Failed during dependency resolution with `onnxruntime==1.26.0` wheel incompatibility for `macosx_26_0_x86_64`.
 - Command 2 (fallback): `./.venv/bin/pytest tests/test_cv_generator.py tests/test_cover_letter_tool.py tests/test_dedup_tool.py tests/test_telegram_notifier.py tests/test_models.py tests/test_utils.py -q`
 - Outcome 2: Failed immediately because `./.venv/bin/pytest` does not exist in this workspace.
+- Command 3 (fallback): `PYTHONPATH=src pytest tests/test_cv_generator.py tests/test_cover_letter_tool.py tests/test_dedup_tool.py tests/test_telegram_notifier.py tests/test_models.py tests/test_utils.py -q`
+- Outcome 3: Passed. `14 passed in 1.59s`.
