@@ -40,6 +40,27 @@ class TelegramNotifierTool(BaseTool):
         asyncio.run(self._send(message_type, company, title, url, score, vacancy_id, date))
         return f"Telegram notification sent for {vacancy_id}"
 
+    def send_company_candidates_review(self, run_date: str, candidate_count: int, path: Path) -> str:
+        asyncio.run(self._send_company_candidates_review(run_date, candidate_count, path))
+        return f"Company candidates review notification sent for {run_date}"
+
+    async def _send_company_candidates_review(
+        self, run_date: str, candidate_count: int, path: Path
+    ) -> None:
+        bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        text = (
+            f"🏢 <b>Company candidates ready for review ({escape(run_date)})</b>\n"
+            f"📊 Candidates: <b>{candidate_count}</b>\n"
+            f"📄 CSV: <code>{escape(str(path))}</code>\n"
+            "✅ Set <code>status=approved</code> for companies discovery should monitor."
+        )
+        await bot.send_message(
+            chat_id=TELEGRAM_CHAT_ID,
+            text=text,
+            parse_mode="HTML",
+            reply_markup=None,
+        )
+
     async def _send(
         self,
         message_type: str,

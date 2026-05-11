@@ -77,3 +77,29 @@ def test_send_completion_message_attaches_generated_documents(tmp_path: Path):
     _, message_kwargs = mock_bot.send_message.call_args
     assert message_kwargs["parse_mode"] == "HTML"
     assert "Attached files" in message_kwargs["text"]
+
+
+def test_send_company_candidates_message_has_no_inline_keyboard(tmp_path: Path):
+    tool = TelegramNotifierTool()
+    mock_bot = MagicMock()
+    mock_bot.send_message = AsyncMock(return_value=MagicMock(message_id=45))
+    mock_bot.send_document = AsyncMock()
+
+    csv_path = tmp_path / "company_candidates.csv"
+    csv_path.write_text("company,status\nAcme,pending\n")
+
+    with patch("job_hunting.tools.telegram_notifier.Bot", return_value=mock_bot):
+        result = tool.send_company_candidates_review(
+            run_date="2026-05-11",
+            candidate_count=7,
+            path=csv_path,
+        )
+
+    assert result == "Company candidates review notification sent for 2026-05-11"
+    _, kwargs = mock_bot.send_message.call_args
+    assert kwargs["parse_mode"] == "HTML"
+    assert kwargs["reply_markup"] is None
+    assert "Candidates: <b>7</b>" in kwargs["text"]
+    assert str(csv_path) in kwargs["text"]
+    assert "status=approved" in kwargs["text"]
+    mock_bot.send_document.assert_not_called()
