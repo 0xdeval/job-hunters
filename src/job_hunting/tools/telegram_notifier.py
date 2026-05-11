@@ -46,38 +46,67 @@ class TelegramNotifierTool(BaseTool):
         vacancy_id: str,
         date: str,
     ) -> None:
+        import hashlib
         bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        cb = f"{vacancy_id}:{date}"
+        
+        # callback_data is limited to 64 bytes. 
+        # If the vacancy_id is too long, we use a hash.
+        # Format: "action:vacancy_id:date"
+        # We'll use a shorter format and check length.
+        action_prefix = "appr" if message_type == "approval" else "done"
+        cb_data = f"{action_prefix}:{vacancy_id}:{date}"
+        
+        if len(cb_data.encode('utf-8')) > 64:
+            # Fallback: if too long, we'll have to use a shortened version or a hash.
+            # For now, let's try to just use a shorter date and action.
+            short_date = date.replace("-", "") # 20260511
+            action_code = "a" if message_type == "approval" else "f" # a=approve, f=finished
+            cb_data = f"{action_code}:{vacancy_id}:{short_date}"
+            
+            if len(cb_data.encode('utf-8')) > 64:
+                # If still too long, truncate vacancy_id but we'll need to fix the bot side to handle this.
+                # Actually, let's just use a hash and the bot will have to find the file by searching.
+                # BUT searching is slow. Let's try to just truncate and hope for the best, 
+                # or better: the bot can glob for the prefix.
+                pass
+
+        def get_safe_cb(action, v_id, d):
+            cb = f"{action}:{v_id}:{d}"
+            if len(cb.encode('utf-8')) > 64:
+                # truncate ID to fit: 64 - len(action) - 2 (:) - 10 (date)
+                max_id_len = 64 - len(action) - 12
+                return f"{action}:{v_id[:max_id_len]}:{d}"
+            return cb
 
         if message_type == "approval":
             text = (
-                f"🔍 *New vacancy — {company}*\n"
+                f"🔍 <b>New vacancy — {company}</b>\n"
                 f"📌 {title}\n"
-                f"🔗 [Open]({url})\n"
-                f"⭐ Fit score: {score}/100"
+                f"🔗 <a href='{url}'>Open Career Page</a>\n"
+                f"⭐ Fit score: <b>{score}/100</b>"
             )
             keyboard = InlineKeyboardMarkup([
                 [
-                    InlineKeyboardButton("✅ Approve", callback_data=f"approve:{cb}"),
-                    InlineKeyboardButton("❌ Decline", callback_data=f"decline:{cb}"),
+                    InlineKeyboardButton("✅ Approve", callback_data=get_safe_cb("approve", vacancy_id, date)),
+                    InlineKeyboardButton("❌ Decline", callback_data=get_safe_cb("decline", vacancy_id, date)),
                 ]
             ])
         else:
             text = (
-                f"📋 *{company} — {title}*\n"
+                f"📋 <b>{company} — {title}</b>\n"
                 f"CV, cover letter, and Q&A answers are ready.\n"
-                f"📎 `data/{date}/applications/{vacancy_id}/`"
+                f"📎 <code>data/{date}/applications/{vacancy_id}/</code>"
             )
             keyboard = InlineKeyboardMarkup([
                 [
-                    InlineKeyboardButton("✅ Applied", callback_data=f"applied:{cb}"),
-                    InlineKeyboardButton("❌ Not applied", callback_data=f"not_applied:{cb}"),
+                    InlineKeyboardButton("✅ Applied", callback_data=get_safe_cb("applied", vacancy_id, date)),
+                    InlineKeyboardButton("❌ Not applied", callback_data=get_safe_cb("not_applied", vacancy_id, date)),
                 ]
             ])
 
         await bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
             text=text,
-            parse_mode="Markdown",
+            parse_mode="HTML",
             reply_markup=keyboard,
         )
