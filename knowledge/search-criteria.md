@@ -30,6 +30,7 @@ Target to Senior product manager
 Primary location: remote globally, not location specific
 
 Secondary location: Portugal, Lisbon OR/AND EMEA/Europe remote
+You can also take into account "Spain - Remote" option for my role
 
 ### Preferred companies industries
 
