@@ -9,6 +9,8 @@ __all__ = [
     "SafeSeleniumScrapingTool",
     "CompanyCandidate",
     "CompanyCandidateStore",
+    "PublicCompanySearch",
+    "CareerPageResolver",
 ]
 
 
@@ -21,6 +23,8 @@ def __getattr__(name: str) -> Any:
         "SafeSeleniumScrapingTool": "job_hunting.tools.safe_selenium_scraper",
         "CompanyCandidate": "job_hunting.tools.company_candidate_store",
         "CompanyCandidateStore": "job_hunting.tools.company_candidate_store",
+        "PublicCompanySearch": "job_hunting.tools.company_public_search",
+        "CareerPageResolver": "job_hunting.tools.career_page_resolver",
     }
     if name not in module_map:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
