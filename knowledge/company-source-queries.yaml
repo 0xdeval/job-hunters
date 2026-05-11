@@ -1,0 +1,34 @@
+# Company lead sourcing query configuration.
+# Editable by user as search strategy evolves.
+
+metadata:
+  profile_focus: "Senior Product Management roles across EU/EMEA remote-friendly companies"
+  notes:
+    - "Prioritize ATS-driven discovery and bounded web searches."
+    - "Avoid US-only intent in query templates."
+    - "Roles, seniority, and industries are supplied by the sourcing crew from search criteria/profile inputs."
+
+source_groups:
+  ats_search:
+    enabled: true
+    domains:
+      - "jobs.ashbyhq.com"
+      - "job-boards.greenhouse.io"
+      - "boards.greenhouse.io"
+      - "job-boards.eu.greenhouse.io"
+      - "jobs.lever.co"
+      - "jobs.personio.com"
+      - "apply.workable.com"
+      - "bamboohr.com/careers"
+
+  web_search:
+    enabled: true
+    templates:
+      - "{role} {seniority} {industry} remote Europe"
+      - "{role} {seniority} {industry} remote global"
+      - "{role} {seniority} {industry} remote EMEA"
+      - "{role} {seniority} {industry} Portugal"
+      - "{role} {seniority} {industry} Lisbon"
+      - "site:{domain} {role} {seniority} {industry}"
+      - "site:{domain} {role} {industry} remote"
+      - "site:{domain} {role} {industry} Europe"
