@@ -9,6 +9,12 @@ def run_discovery() -> None:
     DiscoveryFlow().kickoff()
 
 
+def run_company_sourcing() -> None:
+    """Cron entry point — source company candidates and notify for review."""
+    from job_hunting.flows.company_sourcing_flow import CompanySourcingFlow
+    CompanySourcingFlow().kickoff()
+
+
 def run_bot() -> None:
     """Long-running entry point — start the Telegram bot."""
     from job_hunting.bot.telegram_bot import run

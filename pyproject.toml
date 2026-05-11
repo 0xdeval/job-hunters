@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 job_hunting_discover = "job_hunting.main:run_discovery"
+job_hunting_source_companies = "job_hunting.main:run_company_sourcing"
 job_hunting_bot      = "job_hunting.main:run_bot"
 job_hunting_advisor  = "job_hunting.main:run_advisor"
 
