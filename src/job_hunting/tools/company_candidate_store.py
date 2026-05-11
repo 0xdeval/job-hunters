@@ -101,6 +101,7 @@ class CompanyCandidateStore:
         rows_to_write = [self._candidate_to_row(candidate) for candidate in new_candidates]
 
         if not rows_to_write:
+            self.ensure_output_file()
             return 0
 
         output_file = company_candidates_file(self.run_date)

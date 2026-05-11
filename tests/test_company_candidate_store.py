@@ -27,6 +27,14 @@ def _candidate(company: str) -> CompanyCandidate:
     )
 
 
+def _assert_header_only_candidate_file(path: Path) -> None:
+    assert path.exists()
+    with path.open("r", newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    assert rows == []
+
+
 def test_normalize_company_key_removes_case_and_suffix_noise():
     assert normalize_company_key("Ramp, Inc.") == "ramp"
     assert normalize_company_key("  ACME Labs Ltd  ") == "acme labs"
@@ -45,7 +53,9 @@ def test_store_skips_companies_already_in_knowledge_csv(tmp_path, monkeypatch):
     written = store.write_candidates([_candidate("Ramp")])
 
     assert written == 0
-    assert not (tmp_path / "data" / "2026-05-11" / "company_candidates.csv").exists()
+    _assert_header_only_candidate_file(
+        tmp_path / "data" / "2026-05-11" / "company_candidates.csv"
+    )
 
 
 def test_store_skips_companies_already_in_historical_candidates(tmp_path, monkeypatch):
@@ -78,7 +88,9 @@ def test_store_skips_companies_already_in_historical_candidates(tmp_path, monkey
     written = store.write_candidates([_candidate("Ramp")])
 
     assert written == 0
-    assert not (tmp_path / "data" / "2026-05-11" / "company_candidates.csv").exists()
+    _assert_header_only_candidate_file(
+        tmp_path / "data" / "2026-05-11" / "company_candidates.csv"
+    )
 
 
 def test_store_skips_companies_already_in_historical_candidates_with_utf8_bom(
@@ -113,7 +125,9 @@ def test_store_skips_companies_already_in_historical_candidates_with_utf8_bom(
     written = store.write_candidates([_candidate("Ramp")])
 
     assert written == 0
-    assert not (tmp_path / "data" / "2026-05-11" / "company_candidates.csv").exists()
+    _assert_header_only_candidate_file(
+        tmp_path / "data" / "2026-05-11" / "company_candidates.csv"
+    )
 
 
 def test_store_writes_new_pending_review_candidates(tmp_path, monkeypatch):

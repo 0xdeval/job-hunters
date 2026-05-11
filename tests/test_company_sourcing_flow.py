@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from job_hunting.flows.company_sourcing_flow import CompanySourcingFlow
+from job_hunting.tools.company_candidate_store import CompanyCandidate, CompanyCandidateStore
 
 
 def test_run_company_sourcing_crew_and_notify(monkeypatch, tmp_path):
@@ -87,6 +88,55 @@ def test_run_company_sourcing_crew_does_not_notify_for_old_pending_rows(
 
     flow.send_review_notification(result)
     notifier.send_company_candidates_review.assert_not_called()
+
+
+def test_run_company_sourcing_crew_accepts_fully_deduped_empty_output(
+    monkeypatch, tmp_path
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("job_hunting.flows.company_sourcing_flow.today", lambda: "2026-05-11")
+
+    knowledge_file = tmp_path / "knowledge" / "companies.csv"
+    knowledge_file.parent.mkdir(parents=True)
+    knowledge_file.write_text(
+        "Company,Career page\nAcme,https://acme.com/careers\n",
+        encoding="utf-8",
+    )
+
+    def _write_deduped_empty_candidates(inputs):
+        store = CompanyCandidateStore(run_date=inputs["today"])
+        store.write_candidates(
+            [
+                CompanyCandidate(
+                    company="Acme",
+                    career_page="https://acme.com/careers",
+                    website="https://acme.com",
+                    source="public_search",
+                    industry="FinTech",
+                    match_score=85,
+                    match_reason="Already known",
+                    status="pending_review",
+                    discovered_at="2026-05-11T09:00:00Z",
+                )
+            ]
+        )
+
+    kickoff = MagicMock(side_effect=_write_deduped_empty_candidates)
+    crew_obj = MagicMock()
+    crew_obj.kickoff = kickoff
+    crew_cls = MagicMock()
+    crew_cls.return_value.crew.return_value = crew_obj
+    monkeypatch.setattr("job_hunting.flows.company_sourcing_flow.CompanySourcingCrew", crew_cls)
+
+    flow = CompanySourcingFlow()
+    result = flow.run_company_sourcing_crew()
+
+    assert result == {
+        "run_date": "2026-05-11",
+        "candidate_count": 0,
+        "path": Path("data/2026-05-11/company_candidates.csv"),
+    }
+    assert Path("data/2026-05-11/company_candidates.csv").exists()
 
 
 def test_send_review_notification_skips_when_no_pending(monkeypatch, capsys):
