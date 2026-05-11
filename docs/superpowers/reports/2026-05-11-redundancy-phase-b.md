@@ -1,55 +1,35 @@
-# Redundancy Cleanup Phase B — Evidence Report (2026-05-11)
+# Phase B Redundancy Evidence Report (2026-05-11)
 
-- Status: DONE_WITH_CONCERNS
+## Candidate: src/job_hunting/crew.py
+- Entrypoint reachability: No runtime imports from `src/job_hunting/main.py` or active flows; active runtime uses `job_hunting.crews.discovery.crew` and `job_hunting.crews.application.crew`.
+- Test reachability: No references in `tests/` to `job_hunting.crew` or `JobHunting`.
+- Config binding relevance: Binds to scaffold-only keys `researcher`, `reporting_analyst`, `research_task`, and `reporting_task` not used by active crews.
+- Template fingerprint: Canonical CrewAI starter with `JobHunting` class and placeholder comments around research/reporting setup.
+- Decision: delete
 
-## What you changed
+## Candidate: src/job_hunting/config/agents.yaml
+- Entrypoint reachability: Not imported by runtime entrypoints or active flows; active crews use per-crew config files under `src/job_hunting/crews/*/config`.
+- Test reachability: No test references to this top-level YAML path.
+- Config binding relevance: Defines `researcher` and `reporting_analyst` for the unused scaffold crew only.
+- Template fingerprint: Generic placeholder roles/goals with `{topic}` interpolation and stock CrewAI prose.
+- Decision: delete
 
-- Documented reachability and template evidence for the four Phase B candidates.
-- Removed proven unused template leftovers:
-  - `src/job_hunting/crew.py`
-  - `src/job_hunting/config/agents.yaml`
-  - `src/job_hunting/config/tasks.yaml`
-  - `src/job_hunting/tools/custom_tool.py`
-- Removed now-empty directory with `rmdir src/job_hunting/config || true`.
+## Candidate: src/job_hunting/config/tasks.yaml
+- Entrypoint reachability: Not imported by runtime entrypoints or active flows.
+- Test reachability: No test references to this top-level YAML path.
+- Config binding relevance: Defines `research_task` and `reporting_task` for scaffold-only agents.
+- Template fingerprint: Generic starter tasks (“Conduct a thorough research about {topic}”, “fully fledged report” wording).
+- Decision: delete
 
-## Candidate Evidence
+## Candidate: src/job_hunting/tools/custom_tool.py
+- Entrypoint reachability: No runtime imports from flows, crews, or entrypoints.
+- Test reachability: No references in tests to `custom_tool` or `MyCustomTool`.
+- Config binding relevance: No bindings into active crew/task configuration.
+- Template fingerprint: Stock CrewAI custom tool example with placeholder description and `_run` returning example text.
+- Decision: delete
 
-| Candidate | Entrypoint reachability | Test reachability | Config binding relevance | Template fingerprint | Decision |
-| --- | --- | --- | --- | --- | --- |
-| `src/job_hunting/crew.py` | No runtime imports from `src/job_hunting/main.py` or flows. Active runtime uses `job_hunting.crews.discovery.crew` and `job_hunting.crews.application.crew`. | No matches in `tests/` for `job_hunting.crew` or `JobHunting`. | Binds to `self.agents_config['researcher']`, `self.agents_config['reporting_analyst']`, `self.tasks_config['research_task']`, `self.tasks_config['reporting_task']` that are not part of active crew configs. | Canonical CrewAI scaffold comments and placeholder research/reporting duo. | Remove |
-| `src/job_hunting/config/agents.yaml` | Not referenced by entrypoints or active flows; active crews resolve `config/agents.yaml` within per-crew folders under `src/job_hunting/crews/*/config`. | No tests reference this top-level file path. | Defines `researcher` / `reporting_analyst` only, which align to unused scaffold crew file. | Generic `{topic} Senior Data Researcher` and `Reporting Analyst` template copy. | Remove |
-| `src/job_hunting/config/tasks.yaml` | Not referenced by entrypoints or active flows. | No tests reference this top-level file path. | Defines `research_task` / `reporting_task` for unused scaffold agents only. | Generic "Conduct a thorough research about {topic}" and "fully fledged report" template task text. | Remove |
-| `src/job_hunting/tools/custom_tool.py` | No imports from runtime modules, flows, or crew definitions. | No tests reference `custom_tool` or `MyCustomTool`. | No bindings to active config/task pipelines. | Stock CrewAI example class (`MyCustomTool`, `_run` returns example placeholder text). | Remove |
-
-## Evidence query summary
-
-Executed required queries:
-
-- `rg -n "job_hunting\.crew|researcher|reporting_analyst" src tests`
-- `rg -n "src/job_hunting/config/agents.yaml|src/job_hunting/config/tasks.yaml|MyCustomTool|custom_tool" src tests`
-
-Observed:
-
-- Hits for `researcher`/`reporting_analyst` and `job_hunting.crew` occur in scaffold files themselves plus the unused top-level YAML pair.
-- Active flow imports target `src/job_hunting/crews/discovery/crew.py` and `src/job_hunting/crews/application/crew.py`, not `src/job_hunting/crew.py`.
-- `MyCustomTool`/`custom_tool` appear only in `src/job_hunting/tools/custom_tool.py`.
-
-## Test command + results
-
-- Command:
-  - `uv run pytest tests/test_cv_generator.py tests/test_cover_letter_tool.py tests/test_dedup_tool.py tests/test_telegram_notifier.py tests/test_models.py tests/test_utils.py -q`
-- Result:
-  - Command executed but environment-blocked before test collection:
-    - `error: Distribution onnxruntime==1.26.0 ... doesn't have a source distribution or wheel for macosx_26_0_x86_64`
-
-## Commit SHA
-
-- Pending at report creation time.
-
-## Files changed
-
-- `docs/superpowers/reports/2026-05-11-redundancy-phase-b.md`
-- `src/job_hunting/crew.py` (deleted)
-- `src/job_hunting/config/agents.yaml` (deleted)
-- `src/job_hunting/config/tasks.yaml` (deleted)
-- `src/job_hunting/tools/custom_tool.py` (deleted)
+## Targeted Test Verification
+- Command 1: `uv run pytest tests/test_cv_generator.py tests/test_cover_letter_tool.py tests/test_dedup_tool.py tests/test_telegram_notifier.py tests/test_models.py tests/test_utils.py -q`
+- Outcome 1: Failed during dependency resolution with `onnxruntime==1.26.0` wheel incompatibility for `macosx_26_0_x86_64`.
+- Command 2 (fallback): `./.venv/bin/pytest tests/test_cv_generator.py tests/test_cover_letter_tool.py tests/test_dedup_tool.py tests/test_telegram_notifier.py tests/test_models.py tests/test_utils.py -q`
+- Outcome 2: Failed immediately because `./.venv/bin/pytest` does not exist in this workspace.
