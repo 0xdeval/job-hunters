@@ -11,12 +11,24 @@ class DiscoveryFlow(Flow):
 
     @start()
     def run_discovery_crew(self) -> list[dict]:
-        today = date.today().isoformat()
-        DiscoveryCrew().crew().kickoff(inputs={"today": today})
+        today_str = date.today().isoformat()
+        
+        # Ensure today's directories exist so agents can write to them
+        from job_hunting.utils import vacancies_dir, scores_dir
+        vacancies_dir(today_str).mkdir(parents=True, exist_ok=True)
+        scores_dir(today_str).mkdir(parents=True, exist_ok=True)
+
+        # 1. Run the crew to find NEW vacancies
+        DiscoveryCrew().crew().kickoff(inputs={"today": today_str})
+
+        # 2. Scan ALL historical data for any vacancies that are still 'pending_approval'
         qualifying = []
-        score_dir = scores_dir(today)
-        if score_dir.exists():
-            for score_file in score_dir.glob("*.json"):
+        from pathlib import Path
+        data_root = Path("data")
+        
+        # Look in all date directories (e.g., data/2026-05-11/scores/*.json)
+        if data_root.exists():
+            for score_file in data_root.glob("*/scores/*.json"):
                 try:
                     data = json.loads(score_file.read_text())
                     if data.get("score", 0) >= MIN_SCORE and data.get("status") == "pending_approval":

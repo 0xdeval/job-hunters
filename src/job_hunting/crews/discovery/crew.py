@@ -1,10 +1,10 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
-from crewai_tools import SeleniumScrapingTool, FileReadTool, FileWriterTool
+from crewai_tools import FileReadTool, FileWriterTool, ScrapeWebsiteTool
 from typing import List
 from job_hunting.config import get_llm
-from job_hunting.tools import DedupTool
+from job_hunting.tools import DedupTool, SafeSeleniumScrapingTool
 
 
 @CrewBase
@@ -21,7 +21,12 @@ class DiscoveryCrew:
         return Agent(
             config=self.agents_config["vacancy_scout"],
             llm=get_llm(),
-            tools=[SeleniumScrapingTool(), FileWriterTool(), DedupTool()],
+            tools=[
+                FileReadTool(),
+                SafeSeleniumScrapingTool(),
+                FileWriterTool(),
+                DedupTool(),
+            ],
             verbose=True,
         )
 

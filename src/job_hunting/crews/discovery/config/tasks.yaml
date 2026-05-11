@@ -2,19 +2,22 @@ scrape_vacancies_task:
   description: >
     Today's date is {today}. You are discovering new job vacancies.
 
-    1. Read the file knowledge/companies.csv. It contains columns: company_name, career_page_url.
-    2. For each company, use SeleniumScrapingTool to scrape the career_page_url and extract
-       all open job positions (title, job-specific URL, brief description snippet).
-    3. For each vacancy found:
-       a. Use Vacancy Dedup Checker with the vacancy URL. If result is "duplicate", skip entirely.
-       b. Use SeleniumScrapingTool to open the job-specific URL. Read the page content.
+    1. Use the "Read a file's content" tool to read knowledge/search-criteria.md. Use this to understand the roles, seniority, and keywords the candidate is interested in.
+    2. Use the "Read a file's content" tool to read knowledge/companies.csv. It contains columns: Company, Career page.
+    3. For each company, use the "Scrape website with Selenium" tool to scrape the "Career page" URL.
+       Identify all open job positions (title and URL).
+    4. **FILTERING STEP**: Look at the list of job titles found. Only proceed with roles that are a potential match for the candidate based on the search criteria. Ignore completely irrelevant roles (e.g. if the candidate is an engineer, ignore HR, Legal, or unrelated Sales roles).
+    5. For each vacancy that passed the filter:
+       a. Use "Vacancy Dedup Checker" with the vacancy URL. If result is "duplicate", skip entirely.
+       b. Use the "Scrape website with Selenium" tool to open the job-specific URL. Read the page content.
           If the page shows the job is closed, filled, or returns an error, skip entirely.
        c. Extract: full job description, required skills, any explicit application questions
           (e.g. "Why do you want to work here?"), and whether a cover letter is requested.
        d. Generate a vacancy ID as: lowercase company name and title, spaces and
           special chars replaced with hyphens, double-hyphen between company and title.
           Example: "Acme Corp" + "Senior PM" -> "acme-corp--senior-pm"
-       e. Write a JSON file to data/{today}/vacancies/<vacancy_id>.json with this exact schema:
+       e. Use the "Write to a file" tool to save a JSON file to data/{today}/vacancies/<vacancy_id>.json
+          with this exact schema:
           {{
             "id": "<vacancy_id>",
             "company": "<company_name>",
@@ -24,20 +27,23 @@ scrape_vacancies_task:
             "questions": ["<question1>", "<question2>"],
             "scraped_at": "<ISO8601 timestamp>"
           }}
+          Ensure the directory data/{today}/vacancies/ exists before writing.
           If there are no application questions, use an empty list [].
     4. Return a JSON list of all vacancy IDs that were successfully saved.
   expected_output: >
     A JSON list of vacancy IDs saved, e.g. ["acme-corp--senior-pm", "gnosis--head-of-product"].
-    Return an empty list [] if no new vacancies were found.
+    Return an empty list [] if no new vacancies were found or if all were duplicates.
   agent: vacancy_scout
 
 score_vacancies_task:
   description: >
     Today's date is {today}. Score all newly discovered vacancies.
 
-    The previous task returned a list of vacancy IDs (e.g. ["acme-corp--senior-pm"]).
-    For each vacancy ID, read the file at data/{today}/vacancies/<vacancy_id>.json
-    using FileReadTool with the exact path.
+    The previous task (scrape_vacancies_task) returned a list of vacancy IDs (e.g. ["acme-corp--senior-pm"]).
+    If the list is empty, stop immediately and return []. Do NOT try to read any files.
+
+    For each vacancy ID in the list, read the file at data/{today}/vacancies/<vacancy_id>.json
+    using the "Read a file's content" tool with the exact path.
     Also read knowledge/search-criteria.md and knowledge/profile/profile-summary.md.
 
     For each vacancy:
@@ -48,7 +54,7 @@ score_vacancies_task:
          for one, false otherwise.
       c. Set status to "skipped" if score is clearly below criteria (do not send to Telegram).
          Otherwise set status to "pending_approval".
-      d. Write a JSON file to data/{today}/scores/<vacancy_id>.json with this schema:
+      d. Use the "Write to a file" tool to save a JSON file to data/{today}/scores/<vacancy_id>.json with this schema:
          {{
            "vacancy_id": "<vacancy_id>",
            "date": "{today}",
@@ -59,6 +65,7 @@ score_vacancies_task:
            "status": "pending_approval",
            "requires_cover_letter": <true or false>
          }}
+         Ensure the directory data/{today}/scores/ exists before writing.
     Return a JSON list of score file paths for vacancies with status "pending_approval".
   expected_output: >
     A JSON list of score file paths for qualifying vacancies, e.g.
