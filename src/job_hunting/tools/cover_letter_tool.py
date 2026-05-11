@@ -13,6 +13,29 @@ class CoverLetterInput(BaseModel):
     conclusion: str = Field(description="Closing paragraph, 40-60 words")
     output_tex_path: str = Field(description="Path for the output .tex file")
 
+def escape_latex(text: str) -> str:
+    if not text:
+        return ""
+    return (
+        text
+        .replace("\\", "\\textbackslash{}")
+        .replace("&", "\\&")
+        .replace("%", "\\%")
+        .replace("$", "\\$")
+        .replace("#", "\\#")
+        .replace("_", "\\_")
+        .replace("{", "\\{")
+        .replace("}", "\\}")
+        .replace("~", "\\textasciitilde{}")
+        .replace("^", "\\textasciicircum{}")
+        .replace("—", "---")
+        .replace("–", "--")
+        .replace("’", "'")
+        .replace("‘", "`")
+        .replace("“", "``")
+        .replace("”", "''")
+    )
+
 
 class CoverLetterTool(BaseTool):
     name: str = "Cover Letter Generator"
@@ -29,9 +52,9 @@ class CoverLetterTool(BaseTool):
         template = TEMPLATE_PATH.read_text()
         filled = (
             template
-            .replace("==INTRO==", intro)
-            .replace("==MAIN BODY==", main_body)
-            .replace("==CONCLUSION==", conclusion)
+            .replace("==INTRO==", escape_latex(intro))
+            .replace("==MAIN BODY==", escape_latex(main_body))
+            .replace("==CONCLUSION==", escape_latex(conclusion))
         )
         output_path.write_text(filled)
 

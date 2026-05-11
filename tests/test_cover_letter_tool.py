@@ -47,3 +47,26 @@ def test_cover_letter_returns_error_on_compile_failure(tmp_path):
             output_tex_path=str(output_path),
         )
         assert "failed" in result.lower()
+
+
+def test_cover_letter_escapes_latex_special_chars(tmp_path):
+    tool = CoverLetterTool()
+    output_path = tmp_path / "cover-letter.tex"
+    mock_result = MagicMock(returncode=0, stdout="", stderr="")
+
+    with patch("builtins.open", mock_open(read_data=SAMPLE_TEMPLATE)), \
+         patch("subprocess.run", return_value=mock_result), \
+         patch.object(Path, "write_text") as write_mock:
+        tool._run(
+            intro="Revenue grew 50% & margin 20%.",
+            main_body="Used score_model_v2 with $budget and #1 metric.",
+            conclusion="Ready to discuss {scope} now.",
+            output_tex_path=str(output_path),
+        )
+
+    written = write_mock.call_args.args[0]
+    assert r"50\% \& margin 20\%." in written
+    assert r"score\_model\_v2" in written
+    assert r"\$budget" in written
+    assert r"\#1 metric" in written
+    assert r"\{scope\}" in written
