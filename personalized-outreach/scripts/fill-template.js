@@ -396,6 +396,30 @@ function ensureDataScienceSignal(achievements = []) {
   return updated;
 }
 
+function isDataScienceRole(role) {
+  const haystack = `${role?.id || ""} ${role?.company || ""} ${role?.position || ""}`.toLowerCase();
+  return (
+    haystack.includes("data-science") ||
+    haystack.includes("data science") ||
+    haystack.includes("analytics") ||
+    haystack.includes("wildberries") ||
+    haystack.includes("epam") ||
+    haystack.includes("ozon")
+  );
+}
+
+function includeDataScienceRoleAtEnd(allRoles, selectedRoles) {
+  const dataScienceRole = allRoles.find((role) => isDataScienceRole(role));
+  if (!dataScienceRole) return selectedRoles;
+
+  const hasDataScienceRole = selectedRoles.some((role) => role.id === dataScienceRole.id);
+  if (hasDataScienceRole) return selectedRoles;
+
+  // Keep the primary 4 tailored roles, then append DS/Analytics background as the last role.
+  const primaryRoles = selectedRoles.filter((role) => !isDataScienceRole(role)).slice(0, 4);
+  return [...primaryRoles, dataScienceRole];
+}
+
 function formatSkills(skillsInput) {
   const skillItems = Array.isArray(skillsInput)
     ? skillsInput
@@ -617,6 +641,7 @@ function fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir) {
     const fallbackRoles = profile.workExperience.filter((role) => !selectedIds.has(role.id));
     selectedRoles = [...selectedRoles, ...fallbackRoles].slice(0, 4);
   }
+  selectedRoles = includeDataScienceRoleAtEnd(profile.workExperience, selectedRoles);
   selectedRoles = sortRolesChronologically(selectedRoles);
   if (selectedRoles.length > 0) {
     const experienceSection = formatWorkExperience(
