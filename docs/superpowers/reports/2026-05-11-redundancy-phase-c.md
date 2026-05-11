@@ -123,3 +123,7 @@ Output:
 - `.chainlit/translations/*.json`: delete only after an explicit locale policy is set and runtime fallback is validated.
 
 No deletions performed pending user approval.
+
+## Execution Note (Task 4 Step 3-4)
+
+- 2026-05-11: User approved deletion of only `personalized-outreach/scripts/fill-template.ts`; deletion executed and approval artifact added.
