@@ -1,60 +1,125 @@
 # Phase C Redundancy Candidate Report (2026-05-11)
 
+## Risk Rubric
+
+- `low`: no runtime path dependency and minimal operational impact expected.
+- `medium`: likely safe but there is workflow/documentation uncertainty.
+- `high`: convention/runtime-loaded asset or unclear behavior impact.
+
 | Path | Category | Why potentially redundant | Reachability evidence | Risk | Recommendation |
 |---|---|---|---|---|---|
-| chainlit.md | docs | Potentially duplicative with root README advisor usage notes, but this file may still be consumed by Chainlit convention/runtime behavior. | `rg -n "chainlit\.md" src tests README.md chainlit.md personalized-outreach` returned no references from runtime code/tests; this is not sufficient to prove convention-based non-usage. | medium | Conservative: keep unless a runtime validation confirms Chainlit behavior is unchanged without this file. |
-| personalized-outreach/scripts/fill-template.ts | script | TS source looks like a parallel/legacy implementation while runtime path and tests target JS script. | `rg -n "fill-template\.ts" src tests README.md chainlit.md personalized-outreach` matched only self-reference in `fill-template.ts`; `rg -n "fill-template\.js|SCRIPT_PATH" src tests README.md chainlit.md personalized-outreach` shows active JS wiring in `src/job_hunting/tools/cv_generator.py` and tests. | medium | Candidate for deletion after confirming no local TS editing/build workflow depends on it. |
-| personalized-outreach/README.md | docs | Possible documentation overlap with root README and `personalized-outreach/SKILL.md`. | `rg -n "personalized-outreach/README\.md|/personalized-outreach" src tests README.md chainlit.md personalized-outreach` only matches lines inside `personalized-outreach/README.md`; no runtime/test reference discovered. | low | Candidate to consolidate into `SKILL.md`/root README; delete only if maintainers confirm no separate audience. |
-| .chainlit/translations/*.json | config | Could be clutter for a single-language setup, but these are convention-loaded localization assets and may be used dynamically. | `rg -n "\.chainlit/translations|translations/.*\.json|ar-SA\.json|pt-PT\.json" src tests README.md chainlit.md personalized-outreach` returned no code/test references; `git ls-files .chainlit/translations/*.json \| wc -l` shows 23 tracked locale files. | high | Conservative: keep by default; only prune after runtime validation of language fallback and explicit supported-locale policy. |
+| `chainlit.md` | docs | Possibly duplicative with root `README.md` usage notes, but may be conventionally consumed by Chainlit UX. | No direct code/test references via grep; no explicit config pointer found in searched scopes. | high | Keep by default. Delete only if a runtime check shows Chainlit startup and welcome/onboarding behavior unchanged without this file. |
+| `personalized-outreach/scripts/fill-template.ts` | script | Looks like TS source parallel to active JS runtime entrypoint. | `fill-template.ts` found only in self usage string; active references point to `fill-template.js` in runtime/test paths. | medium | Candidate for deletion if team confirms no TS editing/build workflow depends on this file. |
+| `personalized-outreach/README.md` | docs | Potential overlap with root README and `personalized-outreach/SKILL.md`. | No runtime/test references; references are self-contained inside this README. | medium | Keep unless maintainers explicitly confirm this standalone README has no separate audience. |
+| `.chainlit/translations/*.json` | config | Large locale set could be clutter in single-language operation, but these are convention-loaded assets. | 23 locale files tracked; no direct code/test references found, which is not proof of non-usage for convention-loaded content. | high | Keep by default. Delete only with an explicit supported-locales policy and runtime validation of fallback behavior. |
 
 ## Evidence Snapshot
 
-### 1) `chainlit.md`
+### Command A
 
-Command:
 ```bash
 rg -n "chainlit\.md" src tests README.md chainlit.md personalized-outreach || true
 ```
-Summary:
-- No matches were returned.
-- This indicates no explicit code/test reference in searched scopes, but does not rule out convention-based runtime usage.
 
-### 2) `personalized-outreach/scripts/fill-template.ts`
+Output:
+```text
+(no matches)
+```
 
-Commands:
+### Command B
+
 ```bash
 rg -n "fill-template\.ts" src tests README.md chainlit.md personalized-outreach || true
+```
+
+Output:
+```text
+personalized-outreach/scripts/fill-template.ts:187:    console.error("Usage: npx ts-node fill-template.ts <template> <data.json> <output.tex>");
+```
+
+### Command C
+
+```bash
 rg -n "fill-template\.js|SCRIPT_PATH" src tests README.md chainlit.md personalized-outreach || true
 ```
-Summary:
-- `fill-template.ts` search returned only one self-reference line in `personalized-outreach/scripts/fill-template.ts` (usage text).
-- `fill-template.js|SCRIPT_PATH` search returned active references in:
-  - `src/job_hunting/tools/cv_generator.py`
-  - `tests/test_cv_generator.py`
-  - `personalized-outreach/SKILL.md`
-- Evidence supports JS as the active path and TS as potentially redundant.
 
-### 3) `personalized-outreach/README.md`
+Output:
+```text
+personalized-outreach/scripts/fill-template.js:692:      "Usage: node fill-template.js <template.tex> <tailored-data.json> <output.tex> <profile-dir>"
+personalized-outreach/scripts/fill-template.js:694:    console.error("Example: node fill-template.js cv-template.md data.json output.tex profile/")
+tests/test_cv_generator.py:33:        assert "fill-template.js" in " ".join(first_call_args)
+personalized-outreach/SKILL.md:104:2. **Fill LaTeX template** using `scripts/fill-template.js`
+personalized-outreach/SKILL.md:177:### Step 2: Run fill-template.js Script
+personalized-outreach/SKILL.md:182:mkdir -p .tmp && node personalized-outreach/scripts/fill-template.js \
+personalized-outreach/SKILL.md:284:- **LaTeX characters:** Automatically escaped by fill-template.js (% → \%, $ → \$, etc.)
+personalized-outreach/SKILL.md:376:   - **CV:** Read `best-practices/cv.md` → Generate JSON → Run `fill-template.js` → Output filled `.tex` file
+src/job_hunting/tools/cv_generator.py:10:SCRIPT_PATH = PROJECT_ROOT / "personalized-outreach/scripts/fill-template.js"
+src/job_hunting/tools/cv_generator.py:44:                str(SCRIPT_PATH),
+```
 
-Command:
+### Command D
+
 ```bash
 rg -n "personalized-outreach/README\.md|/personalized-outreach" src tests README.md chainlit.md personalized-outreach || true
 ```
-Summary:
-- Matches were found only inside `personalized-outreach/README.md` itself.
-- No runtime code or tests reference this file in searched scopes.
 
-### 4) `.chainlit/translations/*.json`
+Output:
+```text
+personalized-outreach/README.md:62:/personalized-outreach
+personalized-outreach/README.md:156:2. Invoke `/personalized-outreach`
+```
 
-Commands:
+### Command E
+
 ```bash
 rg -n "\.chainlit/translations|translations/.*\.json|ar-SA\.json|pt-PT\.json" src tests README.md chainlit.md personalized-outreach || true
+```
+
+Output:
+```text
+(no matches)
+```
+
+### Command F
+
+```bash
 git ls-files .chainlit/translations/*.json | wc -l
 git ls-files .chainlit/translations/*.json
 ```
-Summary:
-- No matches in runtime/test/docs scopes searched for explicit references.
-- 23 translation JSON files are tracked under `.chainlit/translations/`.
-- Because these are convention-loaded assets, zero grep references is not proof of non-usage.
+
+Output:
+```text
+23
+.chainlit/translations/ar-SA.json
+.chainlit/translations/bn.json
+.chainlit/translations/da-DK.json
+.chainlit/translations/de-DE.json
+.chainlit/translations/el-GR.json
+.chainlit/translations/en-US.json
+.chainlit/translations/es.json
+.chainlit/translations/fr-FR.json
+.chainlit/translations/gu.json
+.chainlit/translations/he-IL.json
+.chainlit/translations/hi.json
+.chainlit/translations/it.json
+.chainlit/translations/ja.json
+.chainlit/translations/kn.json
+.chainlit/translations/ko.json
+.chainlit/translations/ml.json
+.chainlit/translations/mr.json
+.chainlit/translations/nl.json
+.chainlit/translations/pt-PT.json
+.chainlit/translations/ta.json
+.chainlit/translations/te.json
+.chainlit/translations/zh-CN.json
+.chainlit/translations/zh-TW.json
+```
+
+## Deletion Gates (Explicit)
+
+- `chainlit.md`: delete only after running the advisor UI and confirming no onboarding/welcome regression.
+- `personalized-outreach/scripts/fill-template.ts`: delete only after maintainer confirms there is no TS-based local workflow.
+- `personalized-outreach/README.md`: delete only after maintainer confirms documentation can be consolidated without losing intended audience.
+- `.chainlit/translations/*.json`: delete only after an explicit locale policy is set and runtime fallback is validated.
 
 No deletions performed pending user approval.
