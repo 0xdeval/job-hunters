@@ -1,9 +1,13 @@
 import asyncio
+import json
+from html import escape
+from pathlib import Path
 from typing import Literal
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from job_hunting.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+from job_hunting.utils import applications_dir, vacancies_dir
 
 
 class NotifierInput(BaseModel):
@@ -46,43 +50,24 @@ class TelegramNotifierTool(BaseTool):
         vacancy_id: str,
         date: str,
     ) -> None:
-        import hashlib
         bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        
-        # callback_data is limited to 64 bytes. 
-        # If the vacancy_id is too long, we use a hash.
-        # Format: "action:vacancy_id:date"
-        # We'll use a shorter format and check length.
-        action_prefix = "appr" if message_type == "approval" else "done"
-        cb_data = f"{action_prefix}:{vacancy_id}:{date}"
-        
-        if len(cb_data.encode('utf-8')) > 64:
-            # Fallback: if too long, we'll have to use a shortened version or a hash.
-            # For now, let's try to just use a shorter date and action.
-            short_date = date.replace("-", "") # 20260511
-            action_code = "a" if message_type == "approval" else "f" # a=approve, f=finished
-            cb_data = f"{action_code}:{vacancy_id}:{short_date}"
-            
-            if len(cb_data.encode('utf-8')) > 64:
-                # If still too long, truncate vacancy_id but we'll need to fix the bot side to handle this.
-                # Actually, let's just use a hash and the bot will have to find the file by searching.
-                # BUT searching is slow. Let's try to just truncate and hope for the best, 
-                # or better: the bot can glob for the prefix.
-                pass
 
         def get_safe_cb(action, v_id, d):
             cb = f"{action}:{v_id}:{d}"
-            if len(cb.encode('utf-8')) > 64:
+            if len(cb.encode("utf-8")) > 64:
                 # truncate ID to fit: 64 - len(action) - 2 (:) - 10 (date)
                 max_id_len = 64 - len(action) - 12
                 return f"{action}:{v_id[:max_id_len]}:{d}"
             return cb
 
         if message_type == "approval":
+            resolved_url = self._resolve_vacancy_url(url=url, date=date, vacancy_id=vacancy_id)
+            safe_company = escape(company)
+            safe_title = escape(title)
             text = (
-                f"🔍 <b>New vacancy — {company}</b>\n"
-                f"📌 {title}\n"
-                f"🔗 <a href='{url}'>Open Career Page</a>\n"
+                f"🔍 <b>New vacancy — {safe_company}</b>\n"
+                f"📌 {safe_title}\n"
+                f"🔗 {self._build_vacancy_link_line(resolved_url)}\n"
                 f"⭐ Fit score: <b>{score}/100</b>"
             )
             keyboard = InlineKeyboardMarkup([
@@ -92,10 +77,23 @@ class TelegramNotifierTool(BaseTool):
                 ]
             ])
         else:
+            resolved_url = self._resolve_vacancy_url(url=url, date=date, vacancy_id=vacancy_id)
+            safe_company = escape(company)
+            safe_title = escape(title)
+            docs = self._collect_application_documents(date=date, vacancy_id=vacancy_id)
+            for _, label, doc_path in docs:
+                await bot.send_document(
+                    chat_id=TELEGRAM_CHAT_ID,
+                    document=doc_path,
+                    caption=f"{label}: <code>{escape(doc_path.name)}</code>",
+                    parse_mode="HTML",
+                )
+
+            attached_files = ", ".join(label for _, label, _ in docs) if docs else "none found"
             text = (
-                f"📋 <b>{company} — {title}</b>\n"
-                f"CV, cover letter, and Q&A answers are ready.\n"
-                f"📎 <code>data/{date}/applications/{vacancy_id}/</code>"
+                f"📋 <b>{safe_company} — {safe_title}</b>\n"
+                f"🔗 {self._build_vacancy_link_line(resolved_url)}\n"
+                f"📎 Attached files: <b>{escape(attached_files)}</b>"
             )
             keyboard = InlineKeyboardMarkup([
                 [
@@ -110,3 +108,44 @@ class TelegramNotifierTool(BaseTool):
             parse_mode="HTML",
             reply_markup=keyboard,
         )
+
+    @staticmethod
+    def _build_vacancy_link_line(url: str) -> str:
+        if not url:
+            return "Vacancy URL unavailable"
+        return f"<a href=\"{escape(url, quote=True)}\">Open vacancy</a>"
+
+    @staticmethod
+    def _resolve_vacancy_url(url: str, date: str, vacancy_id: str) -> str:
+        if url:
+            return url
+        vacancy_file = vacancies_dir(date) / f"{vacancy_id}.json"
+        try:
+            data = json.loads(vacancy_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            return ""
+        return data.get("url", "")
+
+    @staticmethod
+    def _collect_application_documents(date: str, vacancy_id: str) -> list[tuple[str, str, Path]]:
+        app_dir = applications_dir(date, vacancy_id)
+        if not app_dir.exists():
+            return []
+
+        docs: list[tuple[str, str, Path]] = []
+        required_patterns = [
+            ("cv", "CV", ["cv.pdf", "cv.tex"]),
+            ("qa", "Q&A", ["qa-answers.md"]),
+        ]
+        optional_patterns = [
+            ("cover_letter", "Cover letter", ["cover-letter.pdf", "cover-letter.tex"]),
+        ]
+
+        for key, label, candidates in required_patterns + optional_patterns:
+            for candidate in candidates:
+                path = app_dir / candidate
+                if path.exists():
+                    docs.append((key, label, path))
+                    break
+
+        return docs
