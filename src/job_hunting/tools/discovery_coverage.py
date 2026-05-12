@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from crewai.tools import BaseTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from job_hunting.utils import discovery_coverage_file
 
@@ -125,6 +125,18 @@ class DiscoveryCoverageInput(BaseModel):
         default="",
         description="Optional ISO8601 timestamp. Leave empty to use current UTC time.",
     )
+
+    @model_validator(mode="after")
+    def failed_status_requires_actionable_notes(self):
+        if self.status != "failed":
+            return self
+
+        normalized_notes = self.notes.strip()
+        generic_notes = {"failed", "failure", "error", "unknown", "n/a", "na"}
+        if len(normalized_notes) < 10 or normalized_notes.casefold() in generic_notes:
+            raise ValueError("failed coverage rows require a specific reason in notes")
+        self.notes = normalized_notes
+        return self
 
 
 class DiscoveryCoverageTool(BaseTool):

@@ -132,3 +132,35 @@ def test_tool_input_rejects_not_attempted_status():
             career_page="https://acme.com/careers",
             status="not_attempted",
         )
+
+
+def test_tool_input_rejects_failed_without_actionable_notes():
+    with pytest.raises(ValidationError):
+        DiscoveryCoverageInput(
+            run_date="2026-05-12",
+            company="Acme",
+            career_page="https://acme.com/careers",
+            status="failed",
+            notes="",
+        )
+
+    with pytest.raises(ValidationError):
+        DiscoveryCoverageInput(
+            run_date="2026-05-12",
+            company="Acme",
+            career_page="https://acme.com/careers",
+            status="failed",
+            notes="error",
+        )
+
+
+def test_tool_input_accepts_failed_with_specific_reason():
+    model = DiscoveryCoverageInput(
+        run_date="2026-05-12",
+        company="Acme",
+        career_page="https://acme.com/careers",
+        status="failed",
+        notes="Selenium timeout after opening career page",
+    )
+
+    assert model.notes == "Selenium timeout after opening career page"
