@@ -1,9 +1,6 @@
 import csv
 import json
-import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from job_hunting.flows import discovery_flow as discovery_flow_module
 from job_hunting.tools.discovery_coverage import DiscoveryCoverageStore
