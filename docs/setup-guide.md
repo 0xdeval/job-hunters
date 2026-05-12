@@ -1,29 +1,42 @@
 # Setup Guide
 
-This guide is for people who are comfortable using LLMs and editing text files, but do not want to work with the code.
+This guide is for people who are comfortable editing text files and using LLMs, but do not want to work with the code.
 
-The service does three main things:
+Before starting the service, fill the files in `knowledge/`. These files are the main control surface for your job search.
 
-1. Reads your profile and search criteria.
-2. Finds suitable vacancies from known company career pages.
-3. Optionally finds new company career pages that can be reviewed and added later.
+Example versions are available in `examples/knowledge/`.
 
-## 1. Install And Configure
+## 1. Install The Project
 
 Install dependencies:
 
 ```bash
 pip install uv
 uv sync
+source .venv/bin/activate
 ```
 
 On some Intel macOS machines, `uv sync` can fail while installing the transitive `onnxruntime` dependency. This service does not use `onnxruntime` directly, so use:
 
 ```bash
 uv sync --no-install-package onnxruntime
+source .venv/bin/activate
 ```
 
-Create your environment file:
+After activation, commands are available as:
+
+```bash
+job_hunting_bot
+job_hunting_discover
+job_hunting_source_companies
+job_hunting_advisor
+```
+
+Without activation, use `uv run <command>`.
+
+## 2. Configure Environment Variables
+
+Create your local environment file:
 
 ```bash
 cp .env.example .env
@@ -41,49 +54,50 @@ TELEGRAM_ALLOWED_USERS=
 MIN_SCORE=70
 ```
 
-Notes:
+What each value means:
 
-- `OPENAI_API_BASE`, `OPENAI_API_KEY`, and `MODEL` connect the service to your LLM provider.
-- `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` let the service send vacancy and candidate notifications.
-- `MIN_SCORE` controls which vacancies are good enough to send for approval.
-
-## 2. Fill Your Profile Files
-
-Profile files live in `knowledge/profile/`.
-
-Fill them with real information. The agents use these files to decide whether a company or vacancy fits you and to prepare application materials.
-
-| File | What to add |
+| Variable | Meaning |
 | --- | --- |
-| `knowledge/profile/general-info.md` | Name, location, email, languages, education, certificates, links. |
-| `knowledge/profile/profile-summary.md` | Short career summary: who you are, what you specialize in, strongest achievements. |
-| `knowledge/profile/work-experience.md` | Jobs, dates, industries, responsibilities, measurable results. |
-| `knowledge/profile/personal-projects.md` | Side projects, open-source work, links, tech stack, outcomes. |
-| `knowledge/profile/values-and-interests.md` | Topics, industries, values, work style, company traits you care about. |
-| `knowledge/profile/public-performance.md` | Talks, publications, community activity, public proof. |
+| `OPENAI_API_BASE` | API endpoint for your LLM provider or proxy. |
+| `OPENAI_API_KEY` | API key for your LLM provider or proxy. |
+| `MODEL` | Model name used by the agents. |
+| `TELEGRAM_BOT_TOKEN` | Token from BotFather for the Telegram bot. |
+| `TELEGRAM_CHAT_ID` | Chat where notifications should be sent. |
+| `TELEGRAM_ALLOWED_USERS` | Optional comma-separated Telegram user IDs allowed to interact with the bot. |
+| `MIN_SCORE` | Minimum vacancy score needed before Telegram approval is requested. |
 
-Use plain language. You do not need a special format, but bullet points with numbers and concrete examples work best.
+## 3. Fill Files Before Starting
 
-## 3. Fill Your Search Criteria
-
-Edit:
+The required setup files are:
 
 ```text
-knowledge/search-criteria.md
+knowledge/
+├── companies.csv
+├── company-source-queries.yaml
+├── search-criteria.md
+└── profile/
+    ├── general-info.md
+    ├── profile-summary.md
+    ├── work-experience.md
+    ├── personal-projects.md
+    ├── values-and-interests.md
+    └── public-performance.md
 ```
 
-Use this file to describe what jobs should be considered suitable.
+### `knowledge/search-criteria.md`
 
-Include:
+This file tells the agents what kind of jobs should be considered suitable.
+
+Fill it with:
 
 - Target role names.
-- Seniority levels.
-- Preferred locations or remote rules.
+- Acceptable seniority levels.
+- Preferred locations and remote rules.
 - Preferred industries.
 - Hard exclusions.
-- Any salary, timezone, language, or visa constraints.
+- Salary, timezone, language, or visa constraints if relevant.
 
-Example:
+Good content looks like:
 
 ```markdown
 ## Role
@@ -108,17 +122,16 @@ Priority:
 2. AI
 3. Crypto/Web3
 4. B2B SaaS
+
+## Exclusions
+
+- Exclude hybrid roles unless they are in my city.
+- Exclude roles that require relocation.
 ```
 
-## 4. Add Known Companies
+### `knowledge/companies.csv`
 
-Edit:
-
-```text
-knowledge/companies.csv
-```
-
-This is the list of companies whose career pages are already known. Vacancy discovery reads this file.
+This file is the active list of companies used by vacancy discovery.
 
 Format:
 
@@ -130,7 +143,7 @@ Another Company,https://jobs.ashbyhq.com/another-company
 
 Use one row per company.
 
-Good career page URLs usually look like:
+Good career page URLs often look like:
 
 - `https://jobs.ashbyhq.com/company`
 - `https://job-boards.greenhouse.io/company`
@@ -138,21 +151,15 @@ Good career page URLs usually look like:
 - `https://jobs.personio.com/company`
 - `https://company.com/careers`
 
-Do not put generated company candidates directly into this file unless you have reviewed them.
+Do not paste every scraped company here automatically. First review `data/<YYYY-MM-DD>/company_candidates.csv`, then copy only useful companies into `knowledge/companies.csv`.
 
-## 5. Configure Company Sourcing Queries
+### `knowledge/company-source-queries.yaml`
 
-Edit:
+This file controls how the company sourcing crew searches for new companies.
 
-```text
-knowledge/company-source-queries.yaml
-```
+It does not replace your profile or search criteria. It only defines search templates and ATS domains.
 
-This file controls how the company sourcing crew searches for new company career pages.
-
-It does not store your profile. It stores reusable search templates and ATS domains.
-
-Useful fields:
+Useful structure:
 
 ```yaml
 source_groups:
@@ -180,80 +187,117 @@ Supported template variables:
 
 The crew reads `search-criteria.md` and profile files, decides which roles/seniorities/industries to use, then fills these templates.
 
-## 6. Run The Service
+## 4. Fill Profile Files
 
-Start the Telegram bot in one terminal:
+Profile files live in:
 
-```bash
-uv run job_hunting_bot
+```text
+knowledge/profile/
 ```
 
-Run vacancy discovery in another terminal:
+Use real information. The agents use this content to score roles, evaluate company fit, and prepare application materials.
+
+| File | What to fill |
+| --- | --- |
+| `general-info.md` | Name, location, email, languages, education, certificates, links. |
+| `profile-summary.md` | Short career summary: who you are, what you specialize in, strongest achievements. |
+| `work-experience.md` | Jobs, dates, company context, responsibilities, measurable results. |
+| `personal-projects.md` | Side projects, open-source work, links, tech stack, outcomes. |
+| `values-and-interests.md` | Topics, industries, values, work style, company traits you care about. |
+| `public-performance.md` | Talks, publications, community activity, public proof. |
+
+Practical tips:
+
+- Use bullet points.
+- Include numbers where possible.
+- Mention industries and product areas clearly.
+- Do not invent achievements; the system will use this text in application materials.
+
+## 5. Run Commands
+
+Start Telegram bot:
 
 ```bash
-uv run job_hunting_discover
+job_hunting_bot
 ```
 
-Use this when you already have companies in `knowledge/companies.csv` and want to find matching vacancies.
+Use it when you want Telegram approval cards, status updates, and review notifications. Keep it running in one terminal.
+
+Run vacancy discovery:
+
+```bash
+job_hunting_discover
+```
+
+Use it after `knowledge/companies.csv` has companies. It finds vacancies, scores them, and sends suitable vacancies to Telegram.
+
+Output:
+
+- `data/<YYYY-MM-DD>/vacancies/*.json`
+- `data/<YYYY-MM-DD>/scores/*.json`
+- `data/<YYYY-MM-DD>/applications/<vacancy_id>/` after approval
 
 Run company sourcing:
 
 ```bash
-uv run job_hunting_source_companies
+job_hunting_source_companies
 ```
 
-Use this when you want to find new companies and career pages. This writes candidates to:
+Use it when you want new company career-page candidates.
 
-```text
-data/<YYYY-MM-DD>/company_candidates.csv
-```
+Output:
 
-It does not modify `knowledge/companies.csv`.
+- `data/<YYYY-MM-DD>/company_candidates.csv`
+- Telegram notification when new candidates need review
 
-Run the advisor UI:
+Important: approved company candidates are not automatically added to `knowledge/companies.csv`. Review them, then copy useful companies manually.
+
+Run advisor UI:
 
 ```bash
-uv run job_hunting_advisor
+job_hunting_advisor
 ```
 
-Use this when you want to chat with the local career advisor interface.
+Use it when you want a local Chainlit chat interface for career/application questions.
 
-## 7. Review Outputs
+## 6. Suggested Routine
 
-Generated data is stored under `data/`.
+First-time setup:
 
-Important paths:
+1. Fill `.env`.
+2. Fill `knowledge/profile/*`.
+3. Fill `knowledge/search-criteria.md`.
+4. Add initial companies to `knowledge/companies.csv`.
+5. Run `job_hunting_bot`.
+6. Run `job_hunting_discover`.
 
-| Path | Meaning |
-| --- | --- |
-| `data/<YYYY-MM-DD>/vacancies/*.json` | Vacancies found from known companies. |
-| `data/<YYYY-MM-DD>/scores/*.json` | Fit scores for vacancies. |
-| `data/<YYYY-MM-DD>/applications/<vacancy_id>/` | Generated application assets. |
-| `data/<YYYY-MM-DD>/company_candidates.csv` | New company career-page candidates for review. |
+Ongoing usage:
 
-When company candidates look good, manually copy reviewed companies into `knowledge/companies.csv`.
+- Run `job_hunting_discover` daily or every few hours.
+- Run `job_hunting_source_companies` when you want more company sources.
+- Review `data/<YYYY-MM-DD>/company_candidates.csv`.
+- Copy approved companies into `knowledge/companies.csv`.
+- Run `job_hunting_discover` again to search vacancies from the expanded company list.
 
-## 8. Suggested Routine
+## 7. Troubleshooting
 
-Daily or every few hours:
+If a command is not found:
+
+```bash
+source .venv/bin/activate
+```
+
+Or run through uv:
 
 ```bash
 uv run job_hunting_discover
 ```
 
-Weekly or when you want more sources:
+If `uv sync` fails on `onnxruntime`:
 
 ```bash
-uv run job_hunting_source_companies
+uv sync --no-install-package onnxruntime
 ```
-
-Always keep the bot running if you want Telegram approvals and notifications:
-
-```bash
-uv run job_hunting_bot
-```
-
-## Troubleshooting
 
 If nothing is found:
 
@@ -264,16 +308,11 @@ If nothing is found:
 If company sourcing finds irrelevant companies:
 
 - Make `knowledge/search-criteria.md` more specific.
-- Edit `knowledge/company-source-queries.yaml` to remove broad templates.
+- Remove broad templates from `knowledge/company-source-queries.yaml`.
 - Add clearer industries and exclusions.
 
 If Telegram does not work:
 
 - Check `TELEGRAM_BOT_TOKEN`.
 - Check `TELEGRAM_CHAT_ID`.
-- Start the bot with `uv run job_hunting_bot`.
-
-If a command like `job_hunting_source_companies` is not found:
-
-- Run it through uv: `uv run job_hunting_source_companies`.
-- Or activate the virtual environment first: `source .venv/bin/activate`.
+- Start the bot with `job_hunting_bot`.

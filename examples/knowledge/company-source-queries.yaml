@@ -1,0 +1,29 @@
+# Company lead sourcing query configuration example.
+# Edit domains and templates to match your search strategy.
+
+metadata:
+  profile_focus: "Senior Product Management roles across remote-friendly companies"
+  notes:
+    - "Prioritize ATS-driven discovery and bounded web searches."
+    - "Avoid country-only remote intent unless it matches your location."
+
+source_groups:
+  ats_search:
+    enabled: true
+    domains:
+      - "jobs.ashbyhq.com"
+      - "job-boards.greenhouse.io"
+      - "boards.greenhouse.io"
+      - "jobs.lever.co"
+      - "jobs.personio.com"
+      - "apply.workable.com"
+      - "bamboohr.com/careers"
+
+  web_search:
+    enabled: true
+    templates:
+      - "{role} {seniority} {industry} remote Europe"
+      - "{role} {seniority} {industry} remote EMEA"
+      - "{role} {seniority} {industry} remote global"
+      - "site:{domain} {role} {industry} remote"
+      - "site:{domain} {role} {industry} Europe"

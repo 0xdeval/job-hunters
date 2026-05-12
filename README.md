@@ -33,6 +33,7 @@ The following ATS domains are working 100% in this project:
 ## Quick Start
 
 For a non-code setup walkthrough, see [`docs/setup-guide.md`](docs/setup-guide.md).
+Example `knowledge/` files are available in [`examples/knowledge/`](examples/knowledge/).
 
 ### 1. Install dependencies
 
@@ -41,12 +42,14 @@ Requires Python `>=3.10,<3.14`.
 ```bash
 pip install uv
 uv sync
+source .venv/bin/activate
 ```
 
 If `uv sync` fails on Intel macOS because of `onnxruntime`, run:
 
 ```bash
 uv sync --no-install-package onnxruntime
+source .venv/bin/activate
 ```
 
 ### 2. Configure environment
@@ -76,25 +79,25 @@ Optional: edit `knowledge/company-source-queries.yaml` to tune public search que
 Start the Telegram bot (terminal 1):
 
 ```bash
-uv run job_hunting_bot
+job_hunting_bot
 ```
 
 Run discovery (terminal 2, cron-friendly entrypoint):
 
 ```bash
-uv run job_hunting_discover
+job_hunting_discover
 ```
 
 Source new company career-page candidates (cron-friendly, separate from vacancy discovery):
 
 ```bash
-uv run job_hunting_source_companies
+job_hunting_source_companies
 ```
 
 Optional: start the local advisor chat UI (Chainlit):
 
 ```bash
-uv run job_hunting_advisor
+job_hunting_advisor
 ```
 
 ## How To Use
@@ -118,7 +121,19 @@ Generated files are stored under:
 
 ## Main Commands
 
-- `uv run job_hunting_discover` — Discover and score vacancies.
-- `uv run job_hunting_source_companies` — Source new company career-page candidates for review.
-- `uv run job_hunting_bot` — Run Telegram approval/status bot.
-- `uv run job_hunting_advisor` — Run Chainlit career advisor UI.
+Activate the environment first:
+
+```bash
+source .venv/bin/activate
+```
+
+- `job_hunting_bot` — Starts the Telegram bot. Output: waits for Telegram actions and handles approvals/status updates.
+- `job_hunting_discover` — Reads `knowledge/companies.csv`, discovers vacancies, scores them, and sends suitable roles to Telegram. Output: `data/<YYYY-MM-DD>/vacancies/`, `data/<YYYY-MM-DD>/scores/`, and application files after approval.
+- `job_hunting_source_companies` — Searches for new company career-page candidates. Output: `data/<YYYY-MM-DD>/company_candidates.csv` and a Telegram review notification when new candidates are found.
+- `job_hunting_advisor` — Starts the Chainlit advisor UI. Output: local web chat for career/application questions.
+
+Without activating `.venv`, prefix commands with `uv run`, for example:
+
+```bash
+uv run job_hunting_discover
+```
