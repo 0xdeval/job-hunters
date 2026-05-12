@@ -30,6 +30,8 @@ The following ATS domains are working 100% in this project:
 - `jobs.personio.com`
 - `bamboohr.com`
 
+> ⚠️ IMPORTANT: Custom career pages are also supported, but can be handled differently by AI and potentially can't be properly processed
+
 ## Quick Start
 
 For a non-code setup walkthrough, see [`docs/setup-guide.md`](docs/setup-guide.md).
