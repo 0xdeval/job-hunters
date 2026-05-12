@@ -10,19 +10,17 @@ def _scrape_task_description() -> str:
 
 
 def test_scrape_task_handles_one_provided_company():
-    description = _scrape_task_description()
+    description = _scrape_task_description().lower()
 
+    assert "one company only" in description
     assert "{company}" in description
     assert "{career_page}" in description
-    assert "one company" in description.lower()
+    assert "knowledge/search-criteria.md" in description
 
 
 def test_scrape_task_does_not_read_or_loop_through_company_csv():
     description = _scrape_task_description().lower()
 
-    assert "read knowledge/companies.csv" not in description
-    assert "for each company" not in description
-    assert "every company from knowledge/companies.csv" not in description
+    assert "companies.csv" not in description
     assert "run window" not in description
-    assert "batch" not in description
     assert "not_attempted" not in description

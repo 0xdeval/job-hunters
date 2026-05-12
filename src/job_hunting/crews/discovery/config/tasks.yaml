@@ -52,7 +52,8 @@ scrape_vacancies_task:
        - notes: useful summary notes
     8. Return a JSON list of vacancy IDs saved for this company.
   expected_output: >
-    A JSON list of vacancy IDs saved, e.g. ["acme-corp--senior-pm", "gnosis--head-of-product"].
+    A JSON list of vacancy IDs saved for this kickoff's {company}, e.g.
+    ["acme-corp--senior-pm", "acme-corp--staff-product-manager"].
     Return an empty list [] if no new vacancies were found or if all were duplicates.
   agent: vacancy_scout
 
