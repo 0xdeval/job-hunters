@@ -99,6 +99,9 @@ class CompanyCandidateToolPayload(BaseModel):
     company: str = Field(description="Company name.")
     career_page: str = Field(description="Resolved company career page URL.")
     website: str = Field(description="Company website URL.")
+    description: str = Field(
+        description="Short neutral company description for Telegram review."
+    )
     source: str = Field(description="Discovery source for the candidate.")
     industry: str = Field(description="Company industry or segment.")
     match_score: int = Field(
@@ -162,6 +165,7 @@ class CompanyCandidateDedupTool(BaseTool):
                         "company": candidate.company,
                         "career_page": candidate.career_page,
                         "website": candidate.website,
+                        "description": candidate.description,
                         "source": candidate.source,
                         "industry": candidate.industry,
                         "match_score": candidate.match_score,
@@ -182,7 +186,7 @@ class CompanyCandidateWriterToolInput(BaseModel):
     candidates: list[CompanyCandidateToolPayload] = Field(
         description=(
             "List of company candidate objects with fields: company, career_page, website, "
-            "source, industry, match_score, match_reason, status, discovered_at."
+            "description, source, industry, match_score, match_reason, status, discovered_at."
         )
     )
 

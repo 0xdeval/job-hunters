@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+from pathlib import Path
 
 from crewai.utilities.agent_utils import convert_tools_to_openai_schema
 
@@ -111,13 +112,14 @@ def test_company_candidate_writer_tool_writes_candidates(tmp_path, monkeypatch):
     payload = CompanyCandidateWriterTool()._run(
         run_date="2026-05-11",
         candidates=[
-            {
-                "company": "Acme",
-                "career_page": "https://acme.com/careers",
-                "website": "https://acme.com",
-                "source": "public_search",
-                "industry": "SaaS",
-                "match_score": 90,
+                {
+                    "company": "Acme",
+                    "career_page": "https://acme.com/careers",
+                    "website": "https://acme.com",
+                    "description": "Builds workflow software.",
+                    "source": "public_search",
+                    "industry": "SaaS",
+                    "match_score": 90,
                 "match_reason": "Strong fit",
                 "status": "pending_review",
                 "discovered_at": "2026-05-11T09:00:00Z",
@@ -137,6 +139,35 @@ def test_company_candidate_writer_tool_writes_candidates(tmp_path, monkeypatch):
     assert rows[0]["company"] == "Acme"
 
 
+def test_company_candidate_writer_accepts_description(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    Path("knowledge").mkdir()
+    Path("knowledge/companies.csv").write_text("Company,Career page\n", encoding="utf-8")
+
+    result = CompanyCandidateWriterTool()._run(
+        run_date="2026-05-13",
+        candidates=[
+            {
+                "company": "Acme",
+                "career_page": "https://acme.example/jobs",
+                "website": "https://acme.example",
+                "description": "Builds workflow software for finance teams.",
+                "source": "public_search",
+                "industry": "FinTech",
+                "match_score": 91,
+                "match_reason": "Strong PM fit",
+                "status": "pending_review",
+                "discovered_at": "2026-05-13T09:00:00Z",
+            }
+        ],
+    )
+
+    assert json.loads(result)["written_count"] == 1
+    rows = list(csv.DictReader(Path("data/2026-05-13/company_candidates.csv").open()))
+    assert rows[0]["description"] == "Builds workflow software for finance teams."
+    assert rows[0]["candidate_id"]
+
+
 def test_company_candidate_dedup_tool_returns_new_and_skipped_without_writing(
     tmp_path, monkeypatch
 ):
@@ -151,24 +182,26 @@ def test_company_candidate_dedup_tool_returns_new_and_skipped_without_writing(
     payload = CompanyCandidateDedupTool()._run(
         run_date="2026-05-11",
         candidates=[
-            {
-                "company": "Known Co",
-                "career_page": "https://known.example/careers",
-                "website": "https://known.example",
-                "source": "public_search",
-                "industry": "SaaS",
-                "match_score": 80,
+                {
+                    "company": "Known Co",
+                    "career_page": "https://known.example/careers",
+                    "website": "https://known.example",
+                    "description": "Known company description.",
+                    "source": "public_search",
+                    "industry": "SaaS",
+                    "match_score": 80,
                 "match_reason": "Already known",
                 "status": "pending_review",
                 "discovered_at": "2026-05-11T09:00:00Z",
             },
-            {
-                "company": "New Co",
-                "career_page": "https://new.example/careers",
-                "website": "https://new.example",
-                "source": "public_search",
-                "industry": "SaaS",
-                "match_score": 91,
+                {
+                    "company": "New Co",
+                    "career_page": "https://new.example/careers",
+                    "website": "https://new.example",
+                    "description": "New company description.",
+                    "source": "public_search",
+                    "industry": "SaaS",
+                    "match_score": 91,
                 "match_reason": "Strong fit",
                 "status": "pending_review",
                 "discovered_at": "2026-05-11T09:00:00Z",
@@ -233,8 +266,8 @@ def test_company_candidate_writer_tool_creates_header_only_output_for_empty_inpu
 
     assert len(lines) == 1
     assert lines[0] == (
-        "company,career_page,website,source,industry,match_score,"
-        "match_reason,status,discovered_at"
+        "candidate_id,company,career_page,website,description,industry,"
+        "source,match_score,match_reason,status,discovered_at,reviewed_at"
     )
 
 
