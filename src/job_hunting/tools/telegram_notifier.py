@@ -44,6 +44,11 @@ class TelegramNotifierTool(BaseTool):
         asyncio.run(self._send_company_candidates_review(run_date, candidate_count, path))
         return f"Company candidates review notification sent for {run_date}"
 
+    def send_company_candidate_review(self, run_date: str, candidate: dict[str, str]) -> str:
+        asyncio.run(self._send_company_candidate_review(run_date, candidate))
+        candidate_id = candidate.get("candidate_id", "")
+        return f"Company candidate review notification sent for {candidate_id}"
+
     async def _send_company_candidates_review(
         self, run_date: str, candidate_count: int, path: Path
     ) -> None:
@@ -59,6 +64,41 @@ class TelegramNotifierTool(BaseTool):
             text=text,
             parse_mode="HTML",
             reply_markup=None,
+        )
+
+    async def _send_company_candidate_review(self, run_date: str, candidate: dict[str, str]) -> None:
+        bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        candidate_id = candidate.get("candidate_id", "")
+        safe_company = escape(candidate.get("company", ""))
+        safe_description = escape(candidate.get("description", ""))
+        safe_industry = escape(candidate.get("industry", ""))
+        website_line = self._build_company_link_line("Website", candidate.get("website", ""))
+        careers_line = self._build_company_link_line("Careers", candidate.get("career_page", ""))
+        text = (
+            "<b>New company candidate</b>\n"
+            f"Company: <b>{safe_company}</b>\n"
+            f"{website_line}\n"
+            f"{careers_line}\n"
+            f"Industry: <b>{safe_industry}</b>\n"
+            f"Description: {safe_description}"
+        )
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "Approve",
+                    callback_data=f"company_approve:{candidate_id}:{run_date}",
+                ),
+                InlineKeyboardButton(
+                    "Decline",
+                    callback_data=f"company_decline:{candidate_id}:{run_date}",
+                ),
+            ]
+        ])
+        await bot.send_message(
+            chat_id=TELEGRAM_CHAT_ID,
+            text=text,
+            parse_mode="HTML",
+            reply_markup=keyboard,
         )
 
     async def _send(
@@ -135,6 +175,16 @@ class TelegramNotifierTool(BaseTool):
         if not url:
             return "Vacancy URL unavailable"
         return f"<a href=\"{escape(url, quote=True)}\">Open vacancy</a>"
+
+    @staticmethod
+    def _build_company_link_line(label: str, url: str) -> str:
+        safe_label = escape(label)
+        if not url:
+            return f"{safe_label} unavailable"
+        return (
+            f"{safe_label}: "
+            f"<a href=\"{escape(url, quote=True)}\">Open {safe_label.lower()}</a>"
+        )
 
     @staticmethod
     def _resolve_vacancy_url(url: str, date: str, vacancy_id: str) -> str:
