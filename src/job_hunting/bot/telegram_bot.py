@@ -137,7 +137,9 @@ async def handle_prep_vacancy_command(
 ) -> None:
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
+    logger.info("Received prep_vacancy command from user %s in chat %s", user_id, chat_id)
     if not _is_authorized(user_id, chat_id):
+        logger.warning("Ignoring unauthorized prep_vacancy command from user %s in chat %s", user_id, chat_id)
         await update.effective_message.reply_text(
             "You are not authorized to use this command."
         )
@@ -147,6 +149,7 @@ async def handle_prep_vacancy_command(
     PENDING_PREP_VACANCY.pop(key, None)
     PENDING_PREP_VACANCY[key] = {"status": "waiting_for_url"}
     await update.effective_message.reply_text("Send the vacancy URL.")
+    logger.info("Waiting for prep vacancy URL from user %s in chat %s", user_id, chat_id)
 
 
 async def handle_prep_vacancy_url(
@@ -159,9 +162,11 @@ async def handle_prep_vacancy_url(
     chat_id = update.effective_chat.id
     key = (int(chat_id), int(user_id))
     if key not in PENDING_PREP_VACANCY:
+        logger.debug("Ignoring non-prep message from user %s in chat %s", user_id, chat_id)
         return
 
     url = update.effective_message.text.strip()
+    logger.info("Received prep vacancy URL candidate from user %s in chat %s", user_id, chat_id)
     if url.startswith("/prep_vacancy"):
         await handle_prep_vacancy_command(update, context)
         return
