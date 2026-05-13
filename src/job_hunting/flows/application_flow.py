@@ -4,13 +4,18 @@ from job_hunting.crews.application.crew import ApplicationCrew
 from job_hunting.tools.telegram_notifier import TelegramNotifierTool
 from job_hunting.utils import vacancies_dir, scores_dir
 
+_DEFAULT_NOTIFIER = object()
+
 
 class ApplicationFlow(Flow):
 
-    def __init__(self, vacancy_id: str, date: str):
+    def __init__(self, vacancy_id: str, date: str, notifier=_DEFAULT_NOTIFIER):
         super().__init__()
         self._vacancy_id = vacancy_id
         self._date = date
+        self._notifier = (
+            TelegramNotifierTool() if notifier is _DEFAULT_NOTIFIER else notifier
+        )
 
     @start()
     def run_application_crew(self) -> dict:
@@ -46,7 +51,10 @@ class ApplicationFlow(Flow):
         score["status"] = "documents_ready"
         score_path.write_text(json.dumps(score, indent=2))
 
-        TelegramNotifierTool()._run(
+        if self._notifier is None:
+            return
+
+        self._notifier._run(
             message_type="completion",
             company=vacancy["company"],
             title=vacancy["title"],

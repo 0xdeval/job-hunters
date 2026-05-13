@@ -214,7 +214,11 @@ class PrepVacancyFlow(Flow):
     ) -> dict:
         try:
             self._notify("Application generation started.")
-            self._application_flow_factory(vacancy_id=vacancy_id, date=run_date).kickoff()
+            self._application_flow_factory(
+                vacancy_id=vacancy_id,
+                date=run_date,
+                notifier=None,
+            ).kickoff()
             self._send_artifact_progress(run_date, vacancy_id, score)
             self._notifier._run(
                 message_type="completion",

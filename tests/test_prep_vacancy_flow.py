@@ -22,15 +22,16 @@ class _Notifier:
 def test_prep_vacancy_flow_writes_files_and_runs_application(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(prep_module, "today", lambda: "2026-05-13")
-    application_calls: list[tuple[str, str]] = []
+    application_calls: list[tuple[str, str, object]] = []
 
     class _ApplicationFlow:
-        def __init__(self, vacancy_id: str, date: str):
+        def __init__(self, vacancy_id: str, date: str, notifier):
             self.vacancy_id = vacancy_id
             self.date = date
+            self.notifier = notifier
 
         def kickoff(self) -> None:
-            application_calls.append((self.vacancy_id, self.date))
+            application_calls.append((self.vacancy_id, self.date, self.notifier))
             app_dir = Path("data") / self.date / "applications" / self.vacancy_id
             app_dir.mkdir(parents=True, exist_ok=True)
             (app_dir / "qa-answers.md").write_text("answers", encoding="utf-8")
@@ -66,7 +67,7 @@ def test_prep_vacancy_flow_writes_files_and_runs_application(tmp_path, monkeypat
     assert score["score"] == 100
     assert score["status"] == "approved"
     assert score["requires_cover_letter"] is True
-    assert application_calls == [("acme--senior-pm", "2026-05-13")]
+    assert application_calls == [("acme--senior-pm", "2026-05-13", None)]
     assert notifier.completions[0]["chat_id"] == 12345
     assert any("Vacancy details extracted" in text for text, _ in notifier.texts)
     assert any("CV created" in text for text, _ in notifier.texts)
@@ -108,15 +109,16 @@ def test_prep_vacancy_flow_reuses_existing_complete_record(tmp_path, monkeypatch
         ),
         encoding="utf-8",
     )
-    application_calls: list[tuple[str, str]] = []
+    application_calls: list[tuple[str, str, object]] = []
 
     class _ApplicationFlow:
-        def __init__(self, vacancy_id: str, date: str):
+        def __init__(self, vacancy_id: str, date: str, notifier):
             self.vacancy_id = vacancy_id
             self.date = date
+            self.notifier = notifier
 
         def kickoff(self) -> None:
-            application_calls.append((self.vacancy_id, self.date))
+            application_calls.append((self.vacancy_id, self.date, self.notifier))
 
     flow = PrepVacancyFlow(
         url="https://acme.com/jobs/senior-pm",
@@ -131,7 +133,7 @@ def test_prep_vacancy_flow_reuses_existing_complete_record(tmp_path, monkeypatch
 
     assert result["vacancy_id"] == "acme--senior-pm"
     assert result["date"] == "2026-05-12"
-    assert application_calls == [("acme--senior-pm", "2026-05-12")]
+    assert application_calls == [("acme--senior-pm", "2026-05-12", None)]
 
 
 def test_prep_vacancy_flow_reports_extraction_failure(tmp_path, monkeypatch):
