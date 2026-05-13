@@ -8,11 +8,12 @@
 Add a Telegram command that lets the user manually prepare application artifacts
 for a single known vacancy URL.
 
-The user should send `/prep-vacancy`, then send the vacancy URL as the next
+The user should send `/prep_vacancy`, then send the vacancy URL as the next
 message. The bot should scrape that vacancy, create the same local vacancy and
 score artifacts that `ApplicationFlow` already expects, run the existing
 application crew, and send the generated files back in the same Telegram
-conversation.
+conversation. Telegram bot command names cannot contain hyphens, so
+`/prep_vacancy` is the single supported command.
 
 This is a manual override path. The user has already checked the vacancy
 manually, so fit score must not gate artifact generation.
@@ -21,7 +22,7 @@ manually, so fit score must not gate artifact generation.
 
 In scope:
 
-- Add `/prep-vacancy` as a Telegram command.
+- Add `/prep_vacancy` as a Telegram command.
 - Support both direct bot chats and group chats where the bot is present.
 - Ask for the vacancy URL as the second message in the conversation.
 - Bind pending group-chat URL requests to the initiating `chat_id` and
@@ -39,7 +40,7 @@ Out of scope:
 - Asking Telegram users for company, title, or description as extra fields.
 - Using score or `MIN_SCORE` to decide whether to generate artifacts.
 - Adding a web UI for manual vacancy preparation.
-- Supporting multiple simultaneous `/prep-vacancy` sessions from the same user
+- Supporting multiple simultaneous `/prep_vacancy` sessions from the same user
   in the same chat.
 
 ## Telegram Conversation
@@ -51,10 +52,10 @@ The command works in two contexts:
 
 Conversation flow:
 
-1. The user sends `/prep-vacancy`.
+1. The user sends `/prep_vacancy`.
 2. The bot verifies authorization using the same user/chat rules as existing
    callback buttons.
-3. The bot clears any previous pending `/prep-vacancy` state for the initiating
+3. The bot clears any previous pending `/prep_vacancy` state for the initiating
    `(chat_id, user_id)`.
 4. The bot stores fresh pending state for the initiating `(chat_id, user_id)`.
 5. The bot replies asking the same user to send the vacancy URL.
@@ -65,12 +66,12 @@ Conversation flow:
 8. If the URL is valid, the bot clears the pending state, sends a processing
    started message, and launches the preparation flow in a background worker.
 
-If the same user sends `/prep-vacancy` again in the same chat while a URL is
+If the same user sends `/prep_vacancy` again in the same chat while a URL is
 pending, the previous pending state is discarded and replaced with a fresh
 request. The bot should then ask for the new vacancy URL.
 
 In group chats, another user must not be able to satisfy someone else's pending
-`/prep-vacancy` request by sending a URL.
+`/prep_vacancy` request by sending a URL.
 
 ## Direct Vacancy Preparation Flow
 
@@ -179,7 +180,7 @@ should be logged but should not stop artifact generation.
 ## Final Telegram Message
 
 The final Telegram response must attach the generated application files in the
-same conversation where `/prep-vacancy` was started.
+same conversation where `/prep_vacancy` was started.
 
 Required attachment behavior:
 
@@ -238,11 +239,11 @@ Use TDD for implementation.
 
 Add or update tests proving:
 
-- `/prep-vacancy` enters URL-waiting state for authorized private chats.
-- `/prep-vacancy` enters URL-waiting state for authorized group chats.
+- `/prep_vacancy` enters URL-waiting state for authorized private chats.
+- `/prep_vacancy` enters URL-waiting state for authorized group chats.
 - Group-chat pending state is bound to the initiating user.
 - A different group member cannot satisfy the pending URL request.
-- Repeating `/prep-vacancy` from the same user in the same chat clears the
+- Repeating `/prep_vacancy` from the same user in the same chat clears the
   previous pending URL state and starts a fresh request.
 - Invalid URLs are rejected without starting prep.
 - Valid URLs start background prep and clear conversation state.
@@ -263,7 +264,7 @@ uv run pytest
 
 ## Acceptance Criteria
 
-- A user can send `/prep-vacancy`, then send a vacancy URL, in either direct bot
+- A user can send `/prep_vacancy`, then send a vacancy URL, in either direct bot
   chat or an authorized group chat.
 - The bot starts processing in the background and sends interim progress
   messages.

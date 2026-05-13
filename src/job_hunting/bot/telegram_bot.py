@@ -162,7 +162,7 @@ async def handle_prep_vacancy_url(
         return
 
     url = update.effective_message.text.strip()
-    if url.startswith("/prep-vacancy"):
+    if url.startswith("/prep_vacancy"):
         await handle_prep_vacancy_command(update, context)
         return
 
@@ -190,7 +190,7 @@ def _run_prep_vacancy_flow(url: str, chat_id: int, user_id: int) -> None:
 
 def run() -> None:
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    app.add_handler(CommandHandler("prep-vacancy", handle_prep_vacancy_command))
+    app.add_handler(CommandHandler("prep_vacancy", handle_prep_vacancy_command))
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_prep_vacancy_url)
     )

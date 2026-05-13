@@ -2,7 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `/prep-vacancy` so an authorized Telegram user can send one vacancy URL and receive generated application artifacts back in the same conversation.
+**Goal:** Add `/prep_vacancy` so an authorized Telegram user can send one vacancy URL and receive generated application artifacts back in the same conversation.
+
+**Command note:** Telegram bot command names cannot contain hyphens. `/prep_vacancy` is the single supported command.
 
 **Architecture:** Keep normal company discovery unchanged. Add a direct-vacancy prep flow that creates the existing vacancy/score files, then calls `ApplicationFlow`. Extend Telegram bot handling with a small per `(chat_id, user_id)` pending URL state and extend the notifier so final document attachments can target the originating chat.
 
@@ -191,7 +193,7 @@ Expected: all notifier tests pass.
 git add src/job_hunting/tools/telegram_notifier.py tests/test_telegram_notifier.py
 git commit -m "Route Telegram notifications to source chats" \
   -m "Allow completion attachments and progress messages to target the chat that started manual vacancy prep while preserving the configured default chat for existing flows." \
-  -m "Constraint: /prep-vacancy must return generated files in the originating conversation." \
+  -m "Constraint: /prep_vacancy must return generated files in the originating conversation." \
   -m "Rejected: Hardcode TELEGRAM_CHAT_ID for manual prep | It would send group/direct command results to the wrong chat." \
   -m "Confidence: high" \
   -m "Scope-risk: narrow" \
@@ -577,7 +579,7 @@ Expected: all prep flow tests pass.
 git add src/job_hunting/flows/prep_vacancy_flow.py src/job_hunting/flows/__init__.py tests/test_prep_vacancy_flow.py
 git commit -m "Prepare manual vacancy artifacts from one URL" \
   -m "Add a direct prep flow that writes the normal vacancy and score files, reuses complete historical records, and then runs the existing application flow without score gating." \
-  -m "Constraint: /prep-vacancy is a manual override path and must not depend on MIN_SCORE." \
+  -m "Constraint: /prep_vacancy is a manual override path and must not depend on MIN_SCORE." \
   -m "Rejected: Route direct URLs through DiscoveryFlow | That flow owns company career-page discovery and coverage reporting." \
   -m "Confidence: medium" \
   -m "Scope-risk: moderate" \
@@ -778,7 +780,7 @@ def _update(text: str, chat_id: int = 12345, user_id: int = 777):
 def test_prep_vacancy_command_enters_waiting_state(monkeypatch):
     monkeypatch.setattr(telegram_bot, "TELEGRAM_CHAT_ID", "12345")
     telegram_bot.PENDING_PREP_VACANCY.clear()
-    update = _update("/prep-vacancy")
+    update = _update("/prep_vacancy")
 
     import asyncio
     asyncio.run(telegram_bot.handle_prep_vacancy_command(update, SimpleNamespace()))
@@ -791,7 +793,7 @@ def test_repeating_prep_vacancy_resets_same_user_state(monkeypatch):
     monkeypatch.setattr(telegram_bot, "TELEGRAM_CHAT_ID", "12345")
     telegram_bot.PENDING_PREP_VACANCY.clear()
     telegram_bot.PENDING_PREP_VACANCY[(12345, 777)] = {"status": "waiting_for_url", "old": "state"}
-    update = _update("/prep-vacancy")
+    update = _update("/prep_vacancy")
 
     import asyncio
     asyncio.run(telegram_bot.handle_prep_vacancy_command(update, SimpleNamespace()))
@@ -923,7 +925,7 @@ async def handle_prep_vacancy_url(update: Update, context: ContextTypes.DEFAULT_
     if key not in PENDING_PREP_VACANCY:
         return
     url = update.effective_message.text.strip()
-    if url.startswith("/prep-vacancy"):
+    if url.startswith("/prep_vacancy"):
         await handle_prep_vacancy_command(update, context)
         return
     if not _is_http_url(url):
@@ -952,7 +954,7 @@ def _run_prep_vacancy_flow(url: str, chat_id: int, user_id: int) -> None:
 In `run()`, register command before generic message handler:
 
 ```python
-    app.add_handler(CommandHandler("prep-vacancy", handle_prep_vacancy_command))
+    app.add_handler(CommandHandler("prep_vacancy", handle_prep_vacancy_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_prep_vacancy_url))
 ```
 
@@ -973,9 +975,9 @@ Expected: all bot command tests pass.
 ```bash
 git add src/job_hunting/bot/telegram_bot.py tests/test_telegram_bot_prep_vacancy.py
 git commit -m "Collect manual vacancy URLs in Telegram" \
-  -m "Add /prep-vacancy conversation handling with per-user chat state, repeated-command reset, URL validation, and background prep flow execution." \
+  -m "Add /prep_vacancy conversation handling with per-user chat state, repeated-command reset, URL validation, and background prep flow execution." \
   -m "Constraint: The command must work in private chats and authorized groups without letting another user satisfy the pending URL request." \
-  -m "Rejected: Add a separate cancellation command | Repeating /prep-vacancy is the requested reset behavior." \
+  -m "Rejected: Add a separate cancellation command | Repeating /prep_vacancy is the requested reset behavior." \
   -m "Confidence: high" \
   -m "Scope-risk: moderate" \
   -m "Directive: Keep pending state keyed by chat and initiating user." \
@@ -1043,7 +1045,7 @@ Spec coverage:
 
 - Telegram command and two-message conversation: Task 4.
 - Direct and group chat support with `(chat_id, user_id)` binding: Task 4.
-- Repeating `/prep-vacancy` clears prior state: Task 4.
+- Repeating `/prep_vacancy` clears prior state: Task 4.
 - HTTP(S) URL validation: Task 4.
 - Direct-vacancy flow and normal artifact files: Task 2.
 - Score does not gate generation: Task 2.

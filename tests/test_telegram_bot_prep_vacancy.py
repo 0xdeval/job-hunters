@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 from job_hunting.bot import telegram_bot
 
@@ -27,7 +28,7 @@ def _update(text: str, chat_id: int = 12345, user_id: int = 777):
 def test_prep_vacancy_command_enters_waiting_state(monkeypatch):
     monkeypatch.setattr(telegram_bot, "TELEGRAM_CHAT_ID", "12345")
     telegram_bot.PENDING_PREP_VACANCY.clear()
-    update = _update("/prep-vacancy")
+    update = _update("/prep_vacancy")
 
     import asyncio
 
@@ -46,7 +47,7 @@ def test_repeating_prep_vacancy_resets_same_user_state(monkeypatch):
         "status": "waiting_for_url",
         "old": "state",
     }
-    update = _update("/prep-vacancy")
+    update = _update("/prep_vacancy")
 
     import asyncio
 
@@ -112,3 +113,23 @@ def test_valid_url_starts_background_flow_and_clears_state(monkeypatch):
     assert calls[0]["daemon"] is True
     assert calls[0]["started"] is True
     assert "Started preparing" in update.message.replies[-1]
+
+
+def test_run_registers_valid_command_handlers(monkeypatch):
+    app = MagicMock()
+    builder = MagicMock()
+    builder.token.return_value = builder
+    builder.build.return_value = app
+    monkeypatch.setattr(telegram_bot.Application, "builder", lambda: builder)
+
+    telegram_bot.run()
+
+    registered_handler_types = [
+        type(call.args[0]).__name__ for call in app.add_handler.call_args_list
+    ]
+    assert registered_handler_types == [
+        "CommandHandler",
+        "MessageHandler",
+        "CallbackQueryHandler",
+    ]
+    app.run_polling.assert_called_once_with(drop_pending_updates=True)
