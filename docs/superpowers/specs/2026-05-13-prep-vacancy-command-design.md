@@ -54,17 +54,20 @@ Conversation flow:
 1. The user sends `/prep-vacancy`.
 2. The bot verifies authorization using the same user/chat rules as existing
    callback buttons.
-3. The bot stores pending state for the initiating `(chat_id, user_id)`.
-4. The bot replies asking the same user to send the vacancy URL.
-5. The bot accepts only the next URL message from that same user in that same
+3. The bot clears any previous pending `/prep-vacancy` state for the initiating
+   `(chat_id, user_id)`.
+4. The bot stores fresh pending state for the initiating `(chat_id, user_id)`.
+5. The bot replies asking the same user to send the vacancy URL.
+6. The bot accepts only the next URL message from that same user in that same
    chat.
-6. If the URL is invalid, the bot asks for a valid HTTP(S) URL and keeps the
+7. If the URL is invalid, the bot asks for a valid HTTP(S) URL and keeps the
    pending state.
-7. If the URL is valid, the bot clears the pending state, sends a processing
+8. If the URL is valid, the bot clears the pending state, sends a processing
    started message, and launches the preparation flow in a background worker.
 
-The bot should also support `/cancel` while waiting for the URL. Cancel clears
-the pending state and sends a short cancellation confirmation.
+If the same user sends `/prep-vacancy` again in the same chat while a URL is
+pending, the previous pending state is discarded and replaced with a fresh
+request. The bot should then ask for the new vacancy URL.
 
 In group chats, another user must not be able to satisfy someone else's pending
 `/prep-vacancy` request by sending a URL.
@@ -239,7 +242,8 @@ Add or update tests proving:
 - `/prep-vacancy` enters URL-waiting state for authorized group chats.
 - Group-chat pending state is bound to the initiating user.
 - A different group member cannot satisfy the pending URL request.
-- `/cancel` clears pending URL state.
+- Repeating `/prep-vacancy` from the same user in the same chat clears the
+  previous pending URL state and starts a fresh request.
 - Invalid URLs are rejected without starting prep.
 - Valid URLs start background prep and clear conversation state.
 - `PrepVacancyFlow` writes normal vacancy and score JSON files.
