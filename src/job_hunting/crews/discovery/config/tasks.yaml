@@ -1,47 +1,59 @@
 scrape_vacancies_task:
   description: >
-    Today's date is {today}. You are discovering new job vacancies.
+    Today's date is {today}. This kickoff discovers vacancies for one company only.
+    Company: {company}
+    Career page: {career_page}
 
-    1. Use the "Read a file's content" tool to read knowledge/search-criteria.md. Use this to understand the roles, seniority, and keywords the candidate is interested in.
-    2. Use the "Read a file's content" tool to read knowledge/companies.csv. It contains columns: Company, Career page.
-    3. For each company, use the "Scrape website with Selenium" tool to scrape the "Career page" URL.
-       Identify all open job positions (title and URL).
-       After each company is handled, use "Discovery Coverage Reporter" with:
+    1. Use the "Read a file's content" tool to read only knowledge/search-criteria.md. Use this to understand the target roles, seniority, and keywords.
+    2. Use the "Scrape website with Selenium" tool to scrape the provided career_page for this company and identify open job positions (title and URL).
+    3. If the provided career_page is unusable for evaluating openings (missing, invalid, inaccessible, or clearly not a careers/jobs page), call "Discovery Coverage Reporter" with:
        - run_date: {today}
-       - company and career_page exactly from knowledge/companies.csv
-       - status: "completed" when scraping succeeded, "failed" when the page could not be scraped, or "skipped" only when the company cannot be evaluated from the provided career page at all
-       - jobs_found: total open roles seen before profile filtering
-       - matched_jobs: roles that passed the filtering step
-       - notes: a short summary or error message
-       You MUST record one coverage row for every company from knowledge/companies.csv.
-       Do NOT mark companies as skipped or not_attempted because of a run window, time budget, or batching.
-       The "not_attempted" status is reserved for the pre-run coverage template and must not be reported with the tool.
-    4. **FILTERING STEP**: Look at the list of job titles found. Only proceed with roles that are a potential match for the candidate based on the search criteria. Ignore completely irrelevant roles (e.g. if the candidate is an engineer, ignore HR, Legal, or unrelated Sales roles).
-    5. For each vacancy that passed the filter:
-       a. Use "Vacancy Dedup Checker" with the vacancy URL. If result is "duplicate", skip entirely.
-       b. Use the "Scrape website with Selenium" tool to open the job-specific URL. Read the page content.
-          If the page shows the job is closed, filled, or returns an error, skip entirely.
-       c. Extract: full job description, required skills, any explicit application questions
-          (e.g. "Why do you want to work here?"), and whether a cover letter is requested.
-       d. Generate a vacancy ID as: lowercase company name and title, spaces and
-          special chars replaced with hyphens, double-hyphen between company and title.
-          Example: "Acme Corp" + "Senior PM" -> "acme-corp--senior-pm"
-       e. Use the "Write to a file" tool to save a JSON file to data/{today}/vacancies/<vacancy_id>.json
-          with this exact schema:
+       - company: {company}
+       - career_page: {career_page}
+       - status: "skipped"
+       - jobs_found: 0
+       - matched_jobs: 0
+       - notes: specific reason
+       Then return [] immediately.
+    4. If scraping fails due to tool error, timeout, HTTP error, or unexpected page failure, call "Discovery Coverage Reporter" with:
+       - run_date: {today}
+       - company: {company}
+       - career_page: {career_page}
+       - status: "failed"
+       - jobs_found: 0
+       - matched_jobs: 0
+       - notes: specific reason
+       Then return [] immediately.
+    5. **FILTERING STEP**: From discovered openings, keep only roles that match the search criteria and skip irrelevant roles.
+    6. For each vacancy that passed the filter:
+       a. Use "Vacancy Dedup Checker" with the vacancy URL. If result is "duplicate", skip it.
+       b. Use the "Scrape website with Selenium" tool to open the job-specific URL and read the page.
+          If the role is closed/filled or the page cannot be read, skip it.
+       c. Extract: full job description, required skills, any explicit application questions, and whether a cover letter is requested.
+       d. Generate vacancy_id as lowercase company and title, spaces/special chars replaced with hyphens, and double-hyphen between company and title.
+       e. Use the "Write to a file" tool to save JSON at data/{today}/vacancies/<vacancy_id>.json with:
           {{
             "id": "<vacancy_id>",
-            "company": "<company_name>",
+            "company": "{company}",
             "title": "<job_title>",
             "url": "<job_url>",
             "description": "<full_job_description>",
             "questions": ["<question1>", "<question2>"],
             "scraped_at": "<ISO8601 timestamp>"
           }}
-          Ensure the directory data/{today}/vacancies/ exists before writing.
-          If there are no application questions, use an empty list [].
-    6. Return a JSON list of all vacancy IDs that were successfully saved.
+          Ensure data/{today}/vacancies/ exists before writing. If there are no application questions, use [].
+    7. After handling this company successfully, call "Discovery Coverage Reporter" with:
+       - run_date: {today}
+       - company: {company}
+       - career_page: {career_page}
+       - status: "completed"
+       - jobs_found: total roles discovered before filtering
+       - matched_jobs: roles that passed filtering
+       - notes: useful summary notes
+    8. Return a JSON list of vacancy IDs saved for this company.
   expected_output: >
-    A JSON list of vacancy IDs saved, e.g. ["acme-corp--senior-pm", "gnosis--head-of-product"].
+    A JSON list of vacancy IDs saved for this kickoff's {company}, e.g.
+    ["acme-corp--senior-pm", "acme-corp--staff-product-manager"].
     Return an empty list [] if no new vacancies were found or if all were duplicates.
   agent: vacancy_scout
 

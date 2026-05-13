@@ -10,7 +10,7 @@ vacancy_scout:
     and you never save the same vacancy twice.
   verbose: true
   allow_delegation: false
-  max_iter: 200
+  max_iter: 30
 
 fit_analyst:
   role: Fit Analyst
