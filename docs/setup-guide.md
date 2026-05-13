@@ -151,7 +151,7 @@ Good career page URLs often look like:
 - `https://jobs.personio.com/company`
 - `https://company.com/careers`
 
-Do not paste every scraped company here automatically. First review `data/<YYYY-MM-DD>/company_candidates.csv`, then copy only useful companies into `knowledge/companies.csv`.
+Company sourcing sends each new candidate to Telegram for review. Click `Approve` to append the company to `knowledge/approved-company-candidates.csv`, or `Decline` to keep it out of discovery. The rich generated file under `data/<date>/company_candidates.csv` remains the audit log for sourced candidates and review decisions.
 
 ### `knowledge/company-source-queries.yaml`
 
@@ -250,7 +250,7 @@ Output:
 - `data/<YYYY-MM-DD>/company_candidates.csv`
 - Telegram notification when new candidates need review
 
-Important: approved company candidates are not automatically added to `knowledge/companies.csv`. Review them, then copy useful companies manually.
+Company sourcing sends each new candidate to Telegram for review. Click `Approve` to append the company to `knowledge/approved-company-candidates.csv`, or `Decline` to keep it out of discovery. The rich generated file under `data/<date>/company_candidates.csv` remains the audit log for sourced candidates and review decisions.
 
 Run advisor UI:
 
@@ -275,8 +275,8 @@ Ongoing usage:
 
 - Run `job_hunting_discover` daily or every few hours.
 - Run `job_hunting_source_companies` when you want more company sources.
-- Review `data/<YYYY-MM-DD>/company_candidates.csv`.
-- Copy approved companies into `knowledge/companies.csv`.
+- Review `data/<YYYY-MM-DD>/company_candidates.csv` as the audit log.
+- Approve or decline candidates directly in Telegram (`Approve` appends to `knowledge/approved-company-candidates.csv`).
 - Run `job_hunting_discover` again to search vacancies from the expanded company list.
 
 ## 7. Troubleshooting

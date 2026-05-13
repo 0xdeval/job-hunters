@@ -112,7 +112,7 @@ job_hunting_advisor
 4. Review generated artifacts in `data/<date>/applications/<vacancy_id>/`.
 5. Mark status back in Telegram (`applied`, `not_applied`, etc.).
 
-Run company sourcing when you want to expand the company list. It searches using `knowledge/company-source-queries.yaml`, deduplicates against `knowledge/companies.csv` and prior candidates, writes review candidates to `data/<date>/company_candidates.csv`, and sends a Telegram notification when new candidates need review.
+Run company sourcing when you want to expand the company list. It searches using `knowledge/company-source-queries.yaml`, deduplicates against `knowledge/companies.csv`, `knowledge/approved-company-candidates.csv`, and prior generated candidates, writes rich review candidates to `data/<date>/company_candidates.csv`, and sends each new pending candidate to Telegram with `Approve`/`Decline` buttons. Approved candidates are appended to `knowledge/approved-company-candidates.csv` for future discovery runs.
 
 ## Data Layout
 
@@ -123,6 +123,7 @@ Generated files are stored under:
 - `data/<YYYY-MM-DD>/applications/<vacancy_id>/...`
 - `data/<YYYY-MM-DD>/company_candidates.csv`
 - `data/<YYYY-MM-DD>/discovery_coverage.csv`
+- `knowledge/approved-company-candidates.csv`
 
 ## Main Commands
 
