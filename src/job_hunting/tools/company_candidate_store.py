@@ -229,7 +229,7 @@ class CompanyCandidateStore:
         output_file = company_candidates_file(self.run_date)
         if not output_file.exists():
             return []
-        with output_file.open("r", newline="", encoding="utf-8") as f:
+        with output_file.open("r", newline="", encoding="utf-8-sig") as f:
             return list(csv.DictReader(f))
 
     def _write_candidate_rows(self, rows: list[dict[str, str]]) -> None:

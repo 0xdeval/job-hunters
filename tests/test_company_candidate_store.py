@@ -366,3 +366,40 @@ def test_decline_candidate_updates_only_rich_row(tmp_path, monkeypatch):
     assert rows[0]["status"] == "declined"
     assert rows[0]["reviewed_at"] == "2026-05-13T10:30:00+00:00"
     assert not (tmp_path / "knowledge" / "approved-company-candidates.csv").exists()
+
+
+def test_list_pending_candidates_supports_utf8_bom_current_run_file(
+    tmp_path, monkeypatch
+):
+    candidate_file = tmp_path / "data" / "2026-05-13" / "company_candidates.csv"
+    candidate_file.parent.mkdir(parents=True)
+    candidate_file.write_text(
+        "candidate_id,company,career_page,website,description,industry,source,match_score,match_reason,status,discovered_at,reviewed_at\n"
+        "new-id,NewCo,https://new.example/jobs,https://new.example,New description,SaaS,public_search,90,New reason,pending_review,2026-05-13T09:00:00Z,\n",
+        encoding="utf-8-sig",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    store = CompanyCandidateStore(run_date="2026-05-13")
+    rows = store.list_pending_candidates()
+    assert [row["candidate_id"] for row in rows] == ["new-id"]
+
+
+def test_review_candidate_supports_utf8_bom_current_run_file(tmp_path, monkeypatch):
+    candidate_file = tmp_path / "data" / "2026-05-13" / "company_candidates.csv"
+    candidate_file.parent.mkdir(parents=True)
+    candidate_file.write_text(
+        "candidate_id,company,career_page,website,description,industry,source,match_score,match_reason,status,discovered_at,reviewed_at\n"
+        "new-id,NewCo,https://new.example/jobs,https://new.example,New description,SaaS,public_search,90,New reason,pending_review,2026-05-13T09:00:00Z,\n",
+        encoding="utf-8-sig",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    store = CompanyCandidateStore(run_date="2026-05-13")
+    row = store.review_candidate(
+        candidate_id="new-id",
+        status="approved",
+        reviewed_at="2026-05-13T11:00:00+00:00",
+    )
+    assert row["status"] == "approved"
+    assert row["reviewed_at"] == "2026-05-13T11:00:00+00:00"
