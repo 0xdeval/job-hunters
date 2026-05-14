@@ -71,6 +71,52 @@ profile_sections:
         load_profile_config(profile_yaml)
 
 
+def test_application_context_rejects_listed_missing_profile_section_file(tmp_path):
+    root = tmp_path / "knowledge"
+    (root / "profile").mkdir(parents=True)
+    profile_yaml = root / "profile.yaml"
+    profile_yaml.write_text(
+        """
+identity:
+  full_name: Alex Candidate
+  preferred_name: Alex
+  email: alex@example.com
+  location:
+    base: Lisbon, Portugal
+    work_modes: [Remote]
+  links: []
+search:
+  roles:
+    primary: Product Manager
+    accepted: [Product Manager]
+    excluded: []
+  seniority:
+    target: Senior
+    accepted: [Senior]
+    excluded: []
+  locations:
+    accepted: [Remote]
+    excluded: []
+  industries:
+    preferred: [SaaS]
+  salary: "$120000+"
+  dealbreakers: []
+profile_sections:
+  summary: profile/missing-summary.md
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ProfileConfigError,
+        match=(
+            "profile_sections.summary points to profile/missing-summary.md, "
+            "but the file does not exist"
+        ),
+    ):
+        build_application_context(profile_yaml)
+
+
 def test_discovery_context_uses_search_and_system_owned_scoring_sections(tmp_path):
     root = tmp_path / "knowledge"
     profile_dir = root / "profile"
