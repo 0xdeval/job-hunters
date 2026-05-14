@@ -55,10 +55,7 @@
 \begin{center}
 \textbf{\Huge \scshape ==PROFILE NAME==} \\ \vspace{5pt}
 \small
-\href{mailto:==EMAIL==}{Email: \underline{==EMAIL==}} $|$
-\href{==LINKEDIN URL==}{LinkedIn: \underline{==LINKEDIN NAME PROFILE==}} $|$
-\href{==X URL==}{X: \underline{@==X PROFILE NAME==}} $|$
-\href{==GITHUB URL==}{GitHub: \underline{==GITHUB NICKNAME==}}\\ \vspace{3pt}
+==CONTACT_LINE==\\ \vspace{3pt}
 \textbf{==PLACE==}
 \end{center}
 
@@ -84,23 +81,13 @@
 \resumeItemListEnd
 \resumeSubHeadingListEnd
 
-\section{Public speaking}\sectionRule
-\resumeItemListStart
-\resumeItem{\textbf{\href{https://ethcc.io/archives/dapp-security-creating-a-trusted-web3-space}{\underline{ETHCC (Paris)}} \& \href{https://www.youtube.com/watch?v=6b46AoFdqxo}{\underline{DappCon (Berlin)}}:} Featured speaker on "Building trusted Web3 spaces" and "Overcoming UX friction in dapps"}
-\resumeItem{\textbf{\href{https://www.youtube.com/watch?v=-gBAIC0lHbM}{\underline{ETH Dam (Amsterdam)}} \& \href{https://www.youtube.com/watch?v=ID3av0xJzKc}{\underline{ETH Belgrade}}:} Presented technical research on designing user-friendly zero-knowledge privacy tools}
-\resumeItem{\textbf{\href{https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4787693}{\underline{DeFi privacy and self-regulatory compliance white paper}}:} Authored a white paper analyzing the intersection of zero-knowledge privacy and regulation, proposing a framework of selective disclosure and AML screening to mitigate illicit use in protocols like zkBob and RAILGUN}
-\resumeItemListEnd
+==PUBLIC_SPEAKING_SECTION==
 
 \section{Skills}\sectionRule
 \resumeItemListStart
 ==TOOLS AND STACK==
 \resumeItemListEnd
 
-\section{Education}\sectionRule
-\resumeSubHeadingListStart
-\resumeSubheading
-{Higher School of Economics}{GPA 8/10}
-{Bachelor's degree, Computational and Applied Mathematics}{Sep 2016 -- Jun 2020}
-\resumeSubHeadingListEnd
+==EDUCATION_SECTION==
 
 \end{document}
