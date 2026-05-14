@@ -23,6 +23,8 @@ def test_cv_generator_calls_node_script(tmp_path):
     output_path = tmp_path / "cv.tex"
 
     mock_result = MagicMock(returncode=0, stdout="", stderr="")
+    captured_profile: dict = {}
+    captured_temp_paths: list[Path] = []
     profile_config = SimpleNamespace(
         root_dir=tmp_path,
         identity=SimpleNamespace(
@@ -36,12 +38,18 @@ def test_cv_generator_calls_node_script(tmp_path):
         profile_sections={},
     )
 
+    def fake_run(command, **kwargs):
+        if command[0] == "node":
+            captured_temp_paths.extend([Path(command[3]), Path(command[6])])
+            captured_profile.update(json.loads(Path(command[6]).read_text(encoding="utf-8")))
+        return mock_result
+
     with (
         patch(
             "job_hunting.tools.cv_generator.load_profile_config",
             return_value=profile_config,
         ),
-        patch("subprocess.run", return_value=mock_result) as mock_run,
+        patch("subprocess.run", side_effect=fake_run) as mock_run,
     ):
         tool._run(
             tailored_json=json.dumps(SAMPLE_TAILORED_JSON),
@@ -51,10 +59,42 @@ def test_cv_generator_calls_node_script(tmp_path):
         first_call_args = mock_run.call_args_list[0][0][0]
         assert "fill-template.js" in " ".join(first_call_args)
         assert len(first_call_args) == 7
-        normalized_profile_path = Path(first_call_args[6])
-        assert normalized_profile_path.exists()
-        normalized_profile = json.loads(normalized_profile_path.read_text(encoding="utf-8"))
-        assert normalized_profile["identity"]["fullName"] == "Ada Lovelace"
+        assert captured_profile["identity"]["fullName"] == "Ada Lovelace"
+        assert all(not path.exists() for path in captured_temp_paths)
+
+
+def test_cv_generator_falls_back_when_profile_section_file_is_missing(tmp_path):
+    tool = CVGeneratorTool()
+    output_path = tmp_path / "cv.tex"
+    missing_section = tmp_path / "missing.md"
+    profile_config = SimpleNamespace(
+        root_dir=tmp_path,
+        identity=SimpleNamespace(
+            full_name="Ada Lovelace",
+            preferred_name="Ada",
+            email="ada@example.com",
+            location_base="London, UK",
+            work_modes=("Remote",),
+            links=(),
+        ),
+        profile_sections={"education": missing_section},
+    )
+
+    with (
+        patch(
+            "job_hunting.tools.cv_generator.load_profile_config",
+            return_value=profile_config,
+        ),
+        patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="", stderr="")) as mock_run,
+    ):
+        tool._run(
+            tailored_json=json.dumps(SAMPLE_TAILORED_JSON),
+            output_tex_path=str(output_path),
+        )
+
+    first_call_args = mock_run.call_args_list[0][0][0]
+    assert "fill-template.js" in " ".join(first_call_args)
+    assert len(first_call_args) == 6
 
 
 def test_cv_generator_raises_on_node_error(tmp_path):
