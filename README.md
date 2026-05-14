@@ -70,9 +70,11 @@ Set values in `.env`:
 - `TELEGRAM_ALLOWED_USERS` (optional, comma-separated)
 - `MIN_SCORE` (default: `70`)
 
-### 3. Add target companies
+### 3. Add profile and target companies
 
 Create a `knowledge` folder in the project root and fill all necessary files. Examples are in [`examples/knowledge/`](examples/knowledge/); the guide for files are in [`docs/setup-guide.md`](docs/setup-guide.md)
+
+Copy `examples/knowledge/profile.yaml` to `knowledge/profile.yaml` and edit it for the candidate. This private YAML file controls identity, Discovery search filters, and the allowlisted profile evidence files used for generated artifacts. The old `knowledge/search-criteria.md` file is deprecated by `knowledge/profile.yaml` under the `search` section.
 
 Edit `knowledge/companies.csv` with company name + career page URL.
 
@@ -123,6 +125,7 @@ Generated files are stored under:
 - `data/<YYYY-MM-DD>/applications/<vacancy_id>/...`
 - `data/<YYYY-MM-DD>/company_candidates.csv`
 - `data/<YYYY-MM-DD>/discovery_coverage.csv`
+- `knowledge/profile.yaml`
 - `knowledge/approved-company-candidates.csv`
 
 ## Main Commands
@@ -134,7 +137,7 @@ source .venv/bin/activate
 ```
 
 - `job_hunting_bot` — Starts the Telegram bot. Output: waits for Telegram actions and handles approvals/status updates.
-- `job_hunting_discover` — Reads `knowledge/companies.csv`, discovers vacancies, scores them, and sends suitable roles to Telegram. Output: `data/<YYYY-MM-DD>/discovery_coverage.csv`, `data/<YYYY-MM-DD>/vacancies/`, `data/<YYYY-MM-DD>/scores/`, and application files after approval.
+- `job_hunting_discover` — Reads `knowledge/profile.yaml` and `knowledge/companies.csv`, discovers vacancies, scores them, and sends suitable roles to Telegram. Output: `data/<YYYY-MM-DD>/discovery_coverage.csv`, `data/<YYYY-MM-DD>/vacancies/`, `data/<YYYY-MM-DD>/scores/`, and application files after approval.
 - `job_hunting_source_companies` — Searches for new company career-page candidates. Output: `data/<YYYY-MM-DD>/company_candidates.csv` and a Telegram review notification when new candidates are found.
 - `job_hunting_advisor` — Starts the Chainlit advisor UI. Output: local web chat for career/application questions.
 
