@@ -18,6 +18,7 @@ ALLOWED_PROFILE_SECTION_KEYS = {
 }
 
 DISCOVERY_SCORING_SECTIONS = ("summary", "skills", "work_experience")
+ALLOWED_TOP_LEVEL_KEYS = {"identity", "search", "profile_sections"}
 
 
 class ProfileConfigError(ValueError):
@@ -109,6 +110,8 @@ def load_profile_config(path: Path | str = "knowledge/profile.yaml") -> ProfileC
     if not isinstance(raw, dict):
         raise ProfileConfigError("profile config must be a YAML mapping")
 
+    _reject_unsupported_top_level_keys(raw)
+
     identity = _parse_identity(_require_mapping(raw, "identity"))
     search = _parse_search(_require_mapping(raw, "search"))
     profile_sections = _parse_profile_sections(
@@ -153,6 +156,14 @@ def build_application_context(
         profile_sections_context="\n\n".join(section_parts),
         section_keys=tuple(config.profile_sections.keys()),
     )
+
+
+def _reject_unsupported_top_level_keys(raw: dict[str, Any]) -> None:
+    unsupported_keys = sorted(set(raw) - ALLOWED_TOP_LEVEL_KEYS)
+    if unsupported_keys:
+        raise ProfileConfigError(
+            f"unsupported top-level profile config key: {unsupported_keys[0]}"
+        )
 
 
 def _parse_identity(raw: dict[str, Any]) -> IdentityConfig:

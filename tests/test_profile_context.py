@@ -44,6 +44,11 @@ profile_sections:
 """
 
 
+def _write_valid_profile_yaml(path: Path, content: str | None = None) -> Path:
+    path.write_text(content or _valid_profile_yaml(), encoding="utf-8")
+    return path
+
+
 def test_loads_example_profile_yaml():
     config = load_profile_config(PROJECT_ROOT / "examples/knowledge/profile.yaml")
 
@@ -102,6 +107,33 @@ profile_sections:
         load_profile_config(profile_yaml)
 
 
+def test_missing_profile_yaml_raises_profile_config_error(tmp_path):
+    missing_profile = tmp_path / "knowledge" / "profile.yaml"
+
+    with pytest.raises(
+        ProfileConfigError, match=f"profile config not found: {missing_profile}"
+    ):
+        load_profile_config(missing_profile)
+
+
+def test_rejects_unsupported_top_level_key(tmp_path):
+    profile_yaml = tmp_path / "profile.yaml"
+    _write_valid_profile_yaml(
+        profile_yaml,
+        _valid_profile_yaml()
+        + """
+discovery_scoring_sections:
+  - projects
+""",
+    )
+
+    with pytest.raises(
+        ProfileConfigError,
+        match="unsupported top-level profile config key: discovery_scoring_sections",
+    ):
+        load_profile_config(profile_yaml)
+
+
 @pytest.mark.parametrize("missing_key", ["identity", "search", "profile_sections"])
 def test_rejects_missing_top_level_required_mappings(tmp_path, missing_key):
     profile_yaml = tmp_path / "profile.yaml"
@@ -121,6 +153,32 @@ def test_rejects_missing_top_level_required_mappings(tmp_path, missing_key):
         match=f"{missing_key} is required and must be a mapping",
     ):
         load_profile_config(profile_yaml)
+
+
+@pytest.mark.parametrize(
+    ("profile_yaml", "expected_message"),
+    [
+        (
+            _valid_profile_yaml().replace("  full_name: Alex Candidate\n", ""),
+            "identity.full_name is required",
+        ),
+        (
+            _valid_profile_yaml().replace("    primary: Product Manager\n", ""),
+            "search.roles.primary is required",
+        ),
+        (
+            _valid_profile_yaml().replace("    work_modes: [Remote]\n", ""),
+            "identity.location.work_modes is required",
+        ),
+    ],
+)
+def test_rejects_missing_required_nested_fields(
+    tmp_path, profile_yaml, expected_message
+):
+    config_path = _write_valid_profile_yaml(tmp_path / "profile.yaml", profile_yaml)
+
+    with pytest.raises(ProfileConfigError, match=expected_message):
+        load_profile_config(config_path)
 
 
 def test_application_context_rejects_listed_missing_profile_section_file(tmp_path):
