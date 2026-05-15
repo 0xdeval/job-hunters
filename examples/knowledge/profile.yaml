@@ -1,0 +1,74 @@
+identity:
+  full_name: Alex Candidate
+  preferred_name: Alex
+  email: alex@example.com
+  location:
+    base: Lisbon, Portugal
+    work_modes:
+      - Remote
+      - Remote Europe
+      - Hybrid Lisbon
+  links:
+    - key: linkedin
+      label: LinkedIn
+      url: https://www.linkedin.com/in/alex-candidate/
+      display: alex-candidate
+      show_on_cv: true
+    - key: github
+      label: GitHub
+      url: https://github.com/alexcandidate
+      display: alexcandidate
+      show_on_cv: true
+
+search:
+  roles:
+    primary: Product Manager
+    accepted:
+      - Product Manager
+      - AI Product Manager
+      - Crypto Product Manager
+    excluded:
+      - Product Owner
+      - Project Manager
+  seniority:
+    target: Senior
+    accepted:
+      - Middle
+      - Senior
+      - Lead
+      - Staff
+      - Associate
+    excluded:
+      - Intern
+      - Junior
+      - Director
+  locations:
+    accepted:
+      - Remote
+      - Remote Europe
+      - Portugal
+      - Lisbon
+      - Spain Remote
+    excluded:
+      - US-only remote
+      - Canada-only remote
+      - Non-Portugal hybrid
+  industries:
+    preferred:
+      - FinTech
+      - AI
+      - Crypto
+      - SaaS
+  salary: "$120000+"
+  dealbreakers:
+    - Requires relocation outside Portugal
+    - Requires onsite outside Lisbon
+
+profile_sections:
+  summary: profile/profile-summary.md
+  work_experience: profile/work-experience.md
+  projects: profile/personal-projects.md
+  education: profile/education.md
+  skills: profile/skills.md
+  public_speaking: profile/public-speaking.md
+  values: profile/values-and-interests.md

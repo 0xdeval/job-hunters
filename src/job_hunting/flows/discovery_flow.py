@@ -6,6 +6,7 @@ from crewai.flow.flow import Flow, listen, start
 from telegram.error import RetryAfter
 from job_hunting.crews.discovery.crew import DiscoveryCrew
 from job_hunting.config import MIN_SCORE
+from job_hunting.profile_context import build_discovery_context
 from job_hunting.tools.discovery_coverage import DiscoveryCoverageStore
 from job_hunting.tools.company_candidate_store import (
     normalize_company_key,
@@ -40,6 +41,7 @@ class DiscoveryFlow(Flow):
     @start()
     def run_discovery_crew(self) -> list[dict]:
         today_str = today()
+        profile_context = build_discovery_context()
 
         # Ensure today's directories exist so agents can write to them
         vacancies_dir(today_str).mkdir(parents=True, exist_ok=True)
@@ -55,6 +57,8 @@ class DiscoveryFlow(Flow):
                         "today": today_str,
                         "company": company,
                         "career_page": career_page,
+                        "discovery_filter_context": profile_context.filter_context,
+                        "candidate_scoring_context": profile_context.scoring_context,
                     }
                 )
             except Exception as exc:

@@ -36,6 +36,6 @@
 
 Best regards,
 
-\textbf{Mike}
+\textbf{==SIGNATURE==}
 
 \end{document}

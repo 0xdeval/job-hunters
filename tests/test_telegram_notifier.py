@@ -76,7 +76,47 @@ def test_send_completion_message_attaches_generated_documents(tmp_path: Path):
 
     _, message_kwargs = mock_bot.send_message.call_args
     assert message_kwargs["parse_mode"] == "HTML"
+    assert "Here are all necessary files for applying to" in message_kwargs["text"]
     assert "Attached files" in message_kwargs["text"]
+
+
+def test_send_completion_message_prefers_company_title_document_names(tmp_path: Path):
+    tool = TelegramNotifierTool()
+    mock_bot = MagicMock()
+    mock_bot.send_message = AsyncMock(return_value=MagicMock(message_id=43))
+    mock_bot.send_document = AsyncMock(return_value=MagicMock(message_id=44))
+
+    app_dir = tmp_path / "applications" / "kraken--senior-product-manager"
+    app_dir.mkdir(parents=True)
+    (app_dir / "Kraken-SeniorProductManager-CV.pdf").write_text("fake cv")
+    (app_dir / "Kraken-SeniorProductManager-QA.md").write_text("fake qa")
+    (app_dir / "Kraken-SeniorProductManager-CoverLetter.pdf").write_text("fake letter")
+    (app_dir / "cv.pdf").write_text("old fake cv")
+    (app_dir / "qa-answers.md").write_text("old fake qa")
+    (app_dir / "cover-letter.pdf").write_text("old fake letter")
+
+    with patch("job_hunting.tools.telegram_notifier.Bot", return_value=mock_bot), patch(
+        "job_hunting.tools.telegram_notifier.applications_dir",
+        return_value=app_dir,
+    ):
+        asyncio.run(
+            tool._send(
+                message_type="completion",
+                company="Kraken",
+                title="Senior Product Manager",
+                url="https://kraken.com/jobs/pm",
+                score=85,
+                vacancy_id="kraken--senior-product-manager",
+                date="2026-05-10",
+            )
+        )
+
+    sent_paths = [call.kwargs["document"] for call in mock_bot.send_document.call_args_list]
+    assert sent_paths == [
+        app_dir / "Kraken-SeniorProductManager-CV.pdf",
+        app_dir / "Kraken-SeniorProductManager-QA.md",
+        app_dir / "Kraken-SeniorProductManager-CoverLetter.pdf",
+    ]
 
 
 def test_send_company_candidate_review_uses_html_links_and_buttons():

@@ -6,6 +6,8 @@ from typing import Literal
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
+
+from job_hunting.application_artifacts import artifact_filename_candidates
 from job_hunting.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 from job_hunting.utils import applications_dir, vacancies_dir
 
@@ -172,7 +174,12 @@ class TelegramNotifierTool(BaseTool):
             resolved_url = self._resolve_vacancy_url(url=url, date=date, vacancy_id=vacancy_id)
             safe_company = escape(company)
             safe_title = escape(title)
-            docs = self._collect_application_documents(date=date, vacancy_id=vacancy_id)
+            docs = self._collect_application_documents(
+                date=date,
+                vacancy_id=vacancy_id,
+                company=company,
+                title=title,
+            )
             for _, label, doc_path in docs:
                 await bot.send_document(
                     chat_id=target_chat_id,
@@ -183,7 +190,8 @@ class TelegramNotifierTool(BaseTool):
 
             attached_files = ", ".join(label for _, label, _ in docs) if docs else "none found"
             text = (
-                f"📋 <b>{safe_company} — {safe_title}</b>\n"
+                "📋 Here are all necessary files for applying to "
+                f"<b>{safe_company} — {safe_title}</b>\n"
                 f"🔗 {self._build_vacancy_link_line(resolved_url)}\n"
                 f"📎 Attached files: <b>{escape(attached_files)}</b>"
             )
@@ -237,18 +245,42 @@ class TelegramNotifierTool(BaseTool):
         return data.get("url", "")
 
     @staticmethod
-    def _collect_application_documents(date: str, vacancy_id: str) -> list[tuple[str, str, Path]]:
+    def _collect_application_documents(
+        date: str, vacancy_id: str, company: str, title: str
+    ) -> list[tuple[str, str, Path]]:
         app_dir = applications_dir(date, vacancy_id)
         if not app_dir.exists():
             return []
 
         docs: list[tuple[str, str, Path]] = []
         required_patterns = [
-            ("cv", "CV", ["cv.pdf", "cv.tex"]),
-            ("qa", "Q&A", ["qa-answers.md"]),
+            (
+                "cv",
+                "CV",
+                artifact_filename_candidates(
+                    company, title, "CV", [".pdf", ".tex"], ["cv.pdf", "cv.tex"]
+                ),
+            ),
+            (
+                "qa",
+                "Q&A",
+                artifact_filename_candidates(
+                    company, title, "QA", [".md"], ["qa-answers.md"]
+                ),
+            ),
         ]
         optional_patterns = [
-            ("cover_letter", "Cover letter", ["cover-letter.pdf", "cover-letter.tex"]),
+            (
+                "cover_letter",
+                "Cover letter",
+                artifact_filename_candidates(
+                    company,
+                    title,
+                    "CoverLetter",
+                    [".pdf", ".tex"],
+                    ["cover-letter.pdf", "cover-letter.tex"],
+                ),
+            ),
         ]
 
         for key, label, candidates in required_patterns + optional_patterns:

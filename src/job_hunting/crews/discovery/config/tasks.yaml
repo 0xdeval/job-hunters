@@ -4,7 +4,10 @@ scrape_vacancies_task:
     Company: {company}
     Career page: {career_page}
 
-    1. Use the "Read a file's content" tool to read only knowledge/search-criteria.md. Use this to understand the target roles, seniority, and keywords.
+    Prepared discovery filter context was built from profile.yaml.search and identity.location before kickoff:
+    {discovery_filter_context}
+
+    1. Use the prepared discovery filter context above to understand the target roles, seniority, locations, industries, salary, dealbreakers, and keywords.
     2. Use the "Scrape website with Selenium" tool to scrape the provided career_page for this company and identify open job positions (title and URL).
     3. If the provided career_page is unusable for evaluating openings (missing, invalid, inaccessible, or clearly not a careers/jobs page), call "Discovery Coverage Reporter" with:
        - run_date: {today}
@@ -24,7 +27,7 @@ scrape_vacancies_task:
        - matched_jobs: 0
        - notes: specific reason
        Then return [] immediately.
-    5. **FILTERING STEP**: From discovered openings, keep only roles that match the search criteria and skip irrelevant roles.
+    5. **FILTERING STEP**: From discovered openings, keep only roles that match the prepared discovery filter context and skip irrelevant roles.
     6. For each vacancy that passed the filter:
        a. Use "Vacancy Dedup Checker" with the vacancy URL. If result is "duplicate", skip it.
        b. Use the "Scrape website with Selenium" tool to open the job-specific URL and read the page.
@@ -64,14 +67,19 @@ score_vacancies_task:
     The previous task (scrape_vacancies_task) returned a list of vacancy IDs (e.g. ["acme-corp--senior-pm"]).
     If the list is empty, stop immediately and return []. Do NOT try to read any files.
 
+    Prepared discovery filter context:
+    {discovery_filter_context}
+
+    Prepared candidate scoring context:
+    {candidate_scoring_context}
+
     For each vacancy ID in the list, read the file at data/{today}/vacancies/<vacancy_id>.json
     using the "Read a file's content" tool with the exact path.
-    Also read knowledge/search-criteria.md and knowledge/profile/profile-summary.md.
 
     For each vacancy:
       a. Score it 0-100 based on fit with the candidate's profile and search criteria.
          Consider: role title match, seniority, location/remote preference, industry,
-         company stage, salary range, excluded criteria from search-criteria.md.
+         company stage, salary range, and dealbreakers from the prepared discovery filter context.
       b. Determine requires_cover_letter: true if the job description explicitly asks
          for one, false otherwise.
       c. Set status to "skipped" if score is clearly below criteria (do not send to Telegram).

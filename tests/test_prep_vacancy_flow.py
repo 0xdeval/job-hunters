@@ -34,9 +34,11 @@ def test_prep_vacancy_flow_writes_files_and_runs_application(tmp_path, monkeypat
             application_calls.append((self.vacancy_id, self.date, self.notifier))
             app_dir = Path("data") / self.date / "applications" / self.vacancy_id
             app_dir.mkdir(parents=True, exist_ok=True)
-            (app_dir / "qa-answers.md").write_text("answers", encoding="utf-8")
-            (app_dir / "cv.pdf").write_text("cv", encoding="utf-8")
-            (app_dir / "cover-letter.pdf").write_text("letter", encoding="utf-8")
+            (app_dir / "Acme-SeniorPM-QA.md").write_text("answers", encoding="utf-8")
+            (app_dir / "Acme-SeniorPM-CV.pdf").write_text("cv", encoding="utf-8")
+            (app_dir / "Acme-SeniorPM-CoverLetter.pdf").write_text(
+                "letter", encoding="utf-8"
+            )
 
     notifier = _Notifier()
     flow = PrepVacancyFlow(
@@ -71,6 +73,63 @@ def test_prep_vacancy_flow_writes_files_and_runs_application(tmp_path, monkeypat
     assert notifier.completions[0]["chat_id"] == 12345
     assert any("Vacancy details extracted" in text for text, _ in notifier.texts)
     assert any("CV created" in text for text, _ in notifier.texts)
+
+
+def test_prep_vacancy_flow_does_not_fail_when_completion_notification_times_out(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(prep_module, "today", lambda: "2026-05-14")
+    application_calls: list[tuple[str, str, object]] = []
+
+    class _ApplicationFlow:
+        def __init__(self, vacancy_id: str, date: str, notifier):
+            self.vacancy_id = vacancy_id
+            self.date = date
+            self.notifier = notifier
+
+        def kickoff(self) -> None:
+            application_calls.append((self.vacancy_id, self.date, self.notifier))
+            app_dir = Path("data") / self.date / "applications" / self.vacancy_id
+            app_dir.mkdir(parents=True, exist_ok=True)
+            (app_dir / "qa-answers.md").write_text("answers", encoding="utf-8")
+            (app_dir / "cv.pdf").write_text("cv", encoding="utf-8")
+
+    class _TimeoutNotifier(_Notifier):
+        def _run(self, **kwargs) -> str:
+            self.completions.append(kwargs)
+            raise TimeoutError("Timed out")
+
+    notifier = _TimeoutNotifier()
+    flow = PrepVacancyFlow(
+        url="https://xolo.example/jobs/product-marketing-manager",
+        chat_id=12345,
+        user_id=777,
+        extractor=lambda url: PreparedVacancy(
+            company="Xolo",
+            title="Product Marketing Manager",
+            description="Own product marketing.",
+            questions=[],
+            requires_cover_letter=False,
+        ),
+        application_flow_factory=_ApplicationFlow,
+        notifier=notifier,
+    )
+
+    result = flow.kickoff()
+
+    assert result == {
+        "status": "completed",
+        "vacancy_id": "xolo--product-marketing-manager",
+        "date": "2026-05-14",
+        "notification_error": "Timed out",
+    }
+    assert application_calls == [
+        ("xolo--product-marketing-manager", "2026-05-14", None)
+    ]
+    assert any("CV created" in text for text, _ in notifier.texts)
+    assert any("completion notification failed" in text for text, _ in notifier.texts)
+    assert not any("Application generation failed" in text for text, _ in notifier.texts)
 
 
 def test_prep_vacancy_flow_reuses_existing_complete_record(tmp_path, monkeypatch):

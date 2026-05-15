@@ -7,13 +7,18 @@ profile_brief_task:
     - Description: {description}
     - Requires cover letter: {requires_cover_letter}
 
-    Read all profile files from knowledge/profile/ using FileReadTool:
-    - profile-summary.md
-    - work-experience.md
-    - personal-projects.md
-    - general-info.md
-    - public-performance.md
-    - values-and-interests.md
+    Candidate identity context:
+    {identity_context}
+
+    Prepared profile sections available for this application:
+    {profile_section_keys}
+
+    Profile sections context:
+    {profile_sections_context}
+
+    Use only the candidate facts in the identity context and profile sections context.
+    Do not read additional files from knowledge/profile/. Do not use facts absent
+    from the provided contexts.
 
     Produce a structured profile brief (max 600 words) with:
     1. Candidate overview — 2-3 sentence summary tailored to this role
@@ -41,11 +46,11 @@ qa_task:
     2. For each question, write a genuine, specific answer using only facts from the
        profile brief. Use real metrics when available. No generic phrases.
     3. If no questions are found, write "No application questions in this vacancy."
-    4. Write the output to data/{date}/applications/{vacancy_id}/qa-answers.md
+    4. Write the output to data/{date}/applications/{vacancy_id}/{artifact_filename_base}-QA.md
        using FileWriterTool.
   expected_output: >
     Markdown file with each question as a heading followed by the answer,
-    saved to data/{date}/applications/{vacancy_id}/qa-answers.md.
+    saved to data/{date}/applications/{vacancy_id}/{artifact_filename_base}-QA.md.
   agent: qa_analyst
   context:
     - profile_brief_task
@@ -56,6 +61,12 @@ cv_task:
     - Company: {company}
     - Title: {title}
     - Description: {description}
+
+    Renderer-visible candidate identity fields:
+    {identity_context}
+
+    Do not read files under knowledge/profile/. The profile brief from
+    profile_brief_task is the only source of candidate evidence for this task.
 
     Steps:
     1. Read personalized-outreach/best-practices/cv.md with FileReadTool to understand
@@ -75,17 +86,18 @@ cv_task:
          }},
          "skills": "Tailored skills list for this vacancy"
        }}
-       IDs come from knowledge/profile/work-experience.md: lowercase company name, spaces to hyphens,
-       remove special chars. E.g. "Blockscout" → "blockscout".
+       Use IDs derived from company and project names present in the profile brief:
+       lowercase names, replace spaces with hyphens, and remove special chars.
+       E.g. "Blockscout" → "blockscout".
        Include at least 4 work experiences. Bold key metrics with **double asterisks**.
        Apply the anti-slop filter: no "spearheaded", "leveraged", "streamlined", etc.
        No PascalCase in sentences.
     3. Use CV Generator tool with the JSON string and output path:
-       data/{date}/applications/{vacancy_id}/cv.tex
+       data/{date}/applications/{vacancy_id}/{artifact_filename_base}-CV.tex
     4. The tool returns the PDF path on success or an error. If error, fix the JSON and retry.
   expected_output: >
-    The path to the generated cv.pdf file, e.g.
-    "data/2026-05-10/applications/acme-corp--senior-pm/cv.pdf"
+    The path to the generated company-title CV PDF file, e.g.
+    "data/2026-05-10/applications/kraken--senior-product-manager/Kraken-SeniorProductManager-CV.pdf"
   agent: cv_architect
   context:
     - profile_brief_task
@@ -96,6 +108,12 @@ cover_letter_task:
     - Company: {company}
     - Title: {title}
     - Description: {description}
+
+    Signature and candidate identity context:
+    {identity_context}
+
+    Do not read files under knowledge/profile/. The profile brief from
+    profile_brief_task is the only source of candidate evidence for this task.
 
     IMPORTANT: First check the requires_cover_letter field in the profile brief
     from profile_brief_task. If it is false, output exactly:
@@ -111,11 +129,11 @@ cover_letter_task:
          the outcome, not the task. Keep it direct and human.
        - conclusion: 40-60 words. Soft call to action. Genuine interest.
     3. Use Cover Letter Generator tool with intro, main_body, conclusion, and output path:
-       data/{date}/applications/{vacancy_id}/cover-letter.tex
+       data/{date}/applications/{vacancy_id}/{artifact_filename_base}-CoverLetter.tex
     4. If the tool returns an error, fix the content and retry once.
   expected_output: >
-    The path to the generated cover-letter.pdf, e.g.
-    "data/2026-05-10/applications/acme-corp--senior-pm/cover-letter.pdf"
+    The path to the generated company-title cover letter PDF, e.g.
+    "data/2026-05-10/applications/kraken--senior-product-manager/Kraken-SeniorProductManager-CoverLetter.pdf"
     — or "Cover letter not required for this vacancy." if not needed.
   agent: cover_letter_writer
   context:

@@ -3,6 +3,8 @@ from pathlib import Path
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from job_hunting.profile_context import load_profile_config
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE_PATH = PROJECT_ROOT / "personalized-outreach/templates/cover-letter.md"
 
@@ -12,6 +14,11 @@ class CoverLetterInput(BaseModel):
     main_body: str = Field(description="Main body paragraphs, 150-200 words total")
     conclusion: str = Field(description="Closing paragraph, 40-60 words")
     output_tex_path: str = Field(description="Path for the output .tex file")
+
+
+def profile_preferred_name() -> str:
+    return load_profile_config(PROJECT_ROOT / "knowledge/profile.yaml").identity.preferred_name
+
 
 def escape_latex(text: str) -> str:
     if not text:
@@ -55,6 +62,7 @@ class CoverLetterTool(BaseTool):
             .replace("==INTRO==", escape_latex(intro))
             .replace("==MAIN BODY==", escape_latex(main_body))
             .replace("==CONCLUSION==", escape_latex(conclusion))
+            .replace("==SIGNATURE==", escape_latex(profile_preferred_name()))
         )
         output_path.write_text(filled)
 

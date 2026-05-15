@@ -28,7 +28,24 @@ def test_scrape_task_handles_one_provided_company():
     assert "one company only" in description
     assert "{company}" in description
     assert "{career_page}" in description
-    assert "knowledge/search-criteria.md" in description
+    assert "{discovery_filter_context}" in description
+
+
+def test_scrape_task_uses_prepared_filter_context():
+    description = _scrape_task_description()
+
+    assert "{discovery_filter_context}" in description
+    assert "knowledge/search-criteria.md" not in description
+    assert "profile.yaml.search" in description
+
+
+def test_score_task_uses_prepared_scoring_context():
+    description = _tasks_config()["score_vacancies_task"]["description"]
+
+    assert "{discovery_filter_context}" in description
+    assert "{candidate_scoring_context}" in description
+    assert "knowledge/search-criteria.md" not in description
+    assert "knowledge/profile/profile-summary.md" not in description
 
 
 def test_scrape_task_does_not_read_or_loop_through_company_csv():

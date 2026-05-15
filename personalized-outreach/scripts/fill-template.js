@@ -72,16 +72,19 @@ function capitalizeSentenceStart(text) {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
-function readProfileFiles(profileDir) {
+function readProfileFiles(profileDir, options = {}) {
+  const includeGeneralInfo = options.includeGeneralInfo !== false;
   const profile = {
     generalInfo: {},
     summary: "",
     workExperience: [],
     projects: [],
+    sections: {},
+    source: "markdown",
   };
 
   // Parse general-info.md
-  if (fs.existsSync(path.join(profileDir, "general-info.md"))) {
+  if (includeGeneralInfo && fs.existsSync(path.join(profileDir, "general-info.md"))) {
     const generalContent = fs.readFileSync(
       path.join(profileDir, "general-info.md"),
       "utf-8"
@@ -215,6 +218,41 @@ function readProfileFiles(profileDir) {
   return profile;
 }
 
+function loadNormalizedProfile(normalizedProfilePath) {
+  if (!normalizedProfilePath) return null;
+  if (!fs.existsSync(normalizedProfilePath)) return null;
+  return JSON.parse(fs.readFileSync(normalizedProfilePath, "utf-8"));
+}
+
+function normalizeProfile(profileDir, normalizedProfilePath) {
+  const normalized = loadNormalizedProfile(normalizedProfilePath);
+  const profile = readProfileFiles(profileDir, { includeGeneralInfo: !normalized });
+  if (!normalized) return profile;
+
+  const identity = normalized.identity || {};
+  profile.source = "normalized";
+  profile.generalInfo = {
+    name: identity.fullName || identity.name || "",
+    email: identity.email || "",
+    location: identity.location || identity.locationBase || "",
+    contactLinks: Array.isArray(identity.links)
+      ? identity.links.filter((link) => link && link.showOnCv === true)
+      : [],
+  };
+  profile.sections = normalized.sections || {};
+  if (Array.isArray(normalized.workExperience)) {
+    profile.workExperience = normalized.workExperience;
+  }
+  if (Array.isArray(normalized.projects)) {
+    profile.projects = normalized.projects;
+  }
+  if (typeof normalized.summary === "string" && normalized.summary.trim()) {
+    profile.summary = normalized.summary.trim();
+  }
+
+  return profile;
+}
+
 function boldMetrics(text) {
   return text.replace(/\*\*(.+?)\*\*/g, "\\textbf{$1}");
 }
@@ -236,6 +274,72 @@ function dedupeStrings(items) {
     result.push(sanitizeGeneratedText(item.trim()));
   }
   return result;
+}
+
+function formatNormalizedContactLine(identity) {
+  const parts = [];
+  if (identity.email) {
+    parts.push(
+      `\\href{mailto:${identity.email}}{Email: \\underline{${escapeLatex(identity.email)}}}`
+    );
+  }
+
+  (identity.contactLinks || []).forEach((link) => {
+    if (!link.url) return;
+    const label = link.label || link.key || "Link";
+    const display = link.display || link.url;
+    parts.push(
+      `\\href{${link.url}}{${escapeLatex(label)}: \\underline{${escapeLatex(display)}}}`
+    );
+  });
+
+  return parts.join(" $|$ ");
+}
+
+function formatLegacyContactLine(identity) {
+  const parts = [];
+  if (identity.email) {
+    parts.push(
+      `\\href{mailto:${identity.email}}{Email: \\underline{${escapeLatex(identity.email)}}}`
+    );
+  }
+  if (identity.linkedinUrl || identity.linkedin) {
+    parts.push(
+      `\\href{${identity.linkedinUrl || ""}}{LinkedIn: \\underline{${escapeLatex(identity.linkedin || "")}}}`
+    );
+  }
+  if (identity.xUrl || identity.twitter) {
+    const display = identity.twitter ? identity.twitter.replace("@", "") : "";
+    parts.push(
+      `\\href{${identity.xUrl || ""}}{X: \\underline{@${escapeLatex(display)}}}`
+    );
+  }
+  if (identity.githubUrl || identity.github) {
+    parts.push(
+      `\\href{${identity.githubUrl || ""}}{GitHub: \\underline{${escapeLatex(identity.github || "")}}}`
+    );
+  }
+  return parts.join(" $|$ ");
+}
+
+function markdownSectionToLatex(title, content) {
+  const lines = String(content || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith("#"));
+
+  const items = lines
+    .map((line) => line.replace(/^[-*]\s+/, ""))
+    .filter(Boolean)
+    .map((line) => `\\resumeItem{${boldMetrics(escapeLatex(line))}}`);
+
+  if (items.length === 0) return "";
+
+  return `\\section{${escapeLatex(title)}}\\sectionRule
+\\resumeItemListStart
+${items.join("\n")}
+\\resumeItemListEnd`;
 }
 
 function resolveEntitiesByIds(entities, requestedIds = []) {
@@ -357,69 +461,6 @@ function sortRolesChronologically(roles) {
   });
 }
 
-function hasDataScienceSignal(text) {
-  const normalized = (text || "").toLowerCase();
-  return [
-    "data",
-    "analytics",
-    "analyst",
-    "sql",
-    "cohort",
-    "funnel",
-    "experiment",
-    "metric",
-    "dashboard",
-    "model",
-    "ml",
-  ].some((keyword) => normalized.includes(keyword));
-}
-
-function ensureDataScienceSignal(achievements = []) {
-  const hasExplicitMention = achievements.some((achievement) => {
-    const normalized = (achievement || "").toLowerCase();
-    return (
-      normalized.includes("data science") &&
-      normalized.includes("analyst experience")
-    );
-  });
-  if (hasExplicitMention) return achievements;
-
-  const signalBullet =
-    "Applied data science and analyst experience to define KPI instrumentation, analyze funnels and cohorts, and turn quantitative insights into roadmap decisions.";
-
-  if (achievements.length < 5) {
-    return [...achievements, signalBullet];
-  }
-
-  const updated = [...achievements];
-  updated[updated.length - 1] = signalBullet;
-  return updated;
-}
-
-function isDataScienceRole(role) {
-  const haystack = `${role?.id || ""} ${role?.company || ""} ${role?.position || ""}`.toLowerCase();
-  return (
-    haystack.includes("data-science") ||
-    haystack.includes("data science") ||
-    haystack.includes("analytics") ||
-    haystack.includes("wildberries") ||
-    haystack.includes("epam") ||
-    haystack.includes("ozon")
-  );
-}
-
-function includeDataScienceRoleAtEnd(allRoles, selectedRoles) {
-  const dataScienceRole = allRoles.find((role) => isDataScienceRole(role));
-  if (!dataScienceRole) return selectedRoles;
-
-  const hasDataScienceRole = selectedRoles.some((role) => role.id === dataScienceRole.id);
-  if (hasDataScienceRole) return selectedRoles;
-
-  // Keep the primary 4 tailored roles, then append DS/Analytics background as the last role.
-  const primaryRoles = selectedRoles.filter((role) => !isDataScienceRole(role)).slice(0, 4);
-  return [...primaryRoles, dataScienceRole];
-}
-
 function formatSkills(skillsInput) {
   const skillItems = Array.isArray(skillsInput)
     ? skillsInput
@@ -517,9 +558,7 @@ function formatSkills(skillsInput) {
 function formatWorkExperience(roles, customDescriptions = {}, customCompanyDescriptions = {}) {
   return roles
     .map((role) => {
-      const achievements = ensureDataScienceSignal(
-        mergeRoleAchievements(role, customDescriptions, 4, 5)
-      );
+      const achievements = mergeRoleAchievements(role, customDescriptions, 4, 5);
       const companyDescription =
         role.id in customCompanyDescriptions
           ? customCompanyDescriptions[role.id]
@@ -531,7 +570,7 @@ function formatWorkExperience(roles, customDescriptions = {}, customCompanyDescr
         .join("\n");
 
       return `    \\resumeSubheading
-      {${escapeLatex(role.position)} | ${escapeLatex(role.company)}}{Remote}
+      {${escapeLatex(role.position)} | ${escapeLatex(role.company)}}{${escapeLatex(role.location || "")}}
       {${escapeLatex(companyDescription)}}{${escapeLatex(role.period)}}
       \\resumeItemListStart
 ${bullets}
@@ -562,9 +601,8 @@ ${bullets}
     .join("\n\n");
 }
 
-function fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir) {
-  // Read profile files
-  const profile = readProfileFiles(profileDir);
+function fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir, normalizedProfilePath) {
+  const profile = normalizeProfile(profileDir, normalizedProfilePath);
 
   // Read tailored data from LLM
   const tailoredData = JSON.parse(fs.readFileSync(tailoredDataPath, "utf-8"));
@@ -577,40 +615,11 @@ function fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir) {
     /==PROFILE NAME==/g,
     escapeLatex(profile.generalInfo.name || "")
   );
-
   template = template.replace(
-    /==EMAIL==/g,
-    profile.generalInfo.email || ""
-  );
-
-  template = template.replace(
-    /==LINKEDIN URL==/g,
-    profile.generalInfo.linkedinUrl || ""
-  );
-
-  template = template.replace(
-    /==LINKEDIN NAME PROFILE==/g,
-    escapeLatex(profile.generalInfo.linkedin || "")
-  );
-
-  template = template.replace(
-    /==X URL==/g,
-    profile.generalInfo.xUrl || ""
-  );
-
-  template = template.replace(
-    /==X PROFILE NAME==/g,
-    escapeLatex(profile.generalInfo.twitter ? profile.generalInfo.twitter.replace("@", "") : "")
-  );
-
-  template = template.replace(
-    /==GITHUB URL==/g,
-    profile.generalInfo.githubUrl || ""
-  );
-
-  template = template.replace(
-    /==GITHUB NICKNAME==/g,
-    escapeLatex(profile.generalInfo.github || "")
+    /==CONTACT_LINE==/g,
+    profile.source === "normalized"
+      ? formatNormalizedContactLine(profile.generalInfo)
+      : formatLegacyContactLine(profile.generalInfo)
   );
 
   // Replace location
@@ -641,7 +650,6 @@ function fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir) {
     const fallbackRoles = profile.workExperience.filter((role) => !selectedIds.has(role.id));
     selectedRoles = [...selectedRoles, ...fallbackRoles].slice(0, 4);
   }
-  selectedRoles = includeDataScienceRoleAtEnd(profile.workExperience, selectedRoles);
   selectedRoles = sortRolesChronologically(selectedRoles);
   if (selectedRoles.length > 0) {
     const experienceSection = formatWorkExperience(
@@ -677,6 +685,15 @@ function fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir) {
     formatSkills(tailoredData.skills || "")
   );
 
+  template = template.replace(
+    /==PUBLIC_SPEAKING_SECTION==/g,
+    markdownSectionToLatex("Public speaking", profile.sections.public_speaking || "")
+  );
+  template = template.replace(
+    /==EDUCATION_SECTION==/g,
+    markdownSectionToLatex("Education", profile.sections.education || "")
+  );
+
   // Write output
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, template, "utf-8");
@@ -689,15 +706,15 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   if (args.length < 4) {
     console.error(
-      "Usage: node fill-template.js <template.tex> <tailored-data.json> <output.tex> <profile-dir>"
+      "Usage: node fill-template.js <template.tex> <tailored-data.json> <output.tex> <profile-dir> [normalized-profile.json]"
     );
-    console.error("Example: node fill-template.js cv-template.md data.json output.tex profile/");
+    console.error("Example: node fill-template.js cv-template.md data.json output.tex profile/ normalized-profile.json");
     process.exit(1);
   }
 
-  const [templatePath, tailoredDataPath, outputPath, profileDir] = args;
+  const [templatePath, tailoredDataPath, outputPath, profileDir, normalizedProfilePath] = args;
 
-  fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir);
+  fillTemplate(templatePath, tailoredDataPath, outputPath, profileDir, normalizedProfilePath);
 }
 
 module.exports = { fillTemplate };
