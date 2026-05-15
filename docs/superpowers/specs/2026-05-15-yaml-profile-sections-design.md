@@ -75,7 +75,7 @@ Supported cross-section rules:
 - When `links` is present, each link requires:
   - `label`
   - `url`
-- Link URLs must be `http://` or `https://`.
+- Link URLs must be `https://`.
 - Links are structured data, not Markdown inline links.
 - In generated PDFs, visible link labels must be clickable and underlined.
 - When multiple link labels are appended to one rendered item, separate them
@@ -365,14 +365,14 @@ Required validation:
 - `show_on_cv`, when present, must be boolean.
 - Period values must be `YYYY-MM`; `period.end` may be `present`.
 - Links require `label` and `url`.
-- Link URLs must start with `http://` or `https://`.
+- Link URLs must start with `https://`.
 
 Example errors:
 
 - `profile_sections.work_experience must point to a .yaml file`
 - `profile_sections.education points to profile/education.yaml, but the file does not exist`
 - `work_experience.roles[0].achievements[0].text is required`
-- `projects.projects[1].links[0].url must be an http(s) URL`
+- `projects.projects[1].links[0].url must be an https URL`
 
 ## Documentation
 
@@ -431,4 +431,3 @@ The renderer-facing normalized profile JSON should contain structured sections,
 not Markdown strings. Existing renderer logic can be adapted incrementally, but
 the prompt and rendering layers should no longer parse profile Markdown as the
 source of truth.
-
