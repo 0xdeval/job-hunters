@@ -709,6 +709,130 @@ roles:
     assert "Grew activation by 30%" in context.scoring_context
 
 
+def test_discovery_context_ignores_invalid_non_scoring_sections(tmp_path):
+    root = tmp_path / "knowledge"
+    profile_dir = root / "profile"
+    profile_dir.mkdir(parents=True)
+    (profile_dir / "work-experience.yaml").write_text(
+        """
+roles:
+  - id: acme
+    company: Acme
+    title: Senior Product Manager
+    period: {start: 2023-01, end: present}
+    achievements:
+      - area: Activation
+        text: Scoring work sentinel.
+""",
+        encoding="utf-8",
+    )
+    (profile_dir / "values.yaml").write_text(
+        "values: []\n",
+        encoding="utf-8",
+    )
+    profile_yaml = root / "profile.yaml"
+    profile_yaml.write_text(
+        _valid_profile_yaml(
+            profile_sections="""
+  work_experience: profile/work-experience.yaml
+  values: profile/values.yaml
+"""
+        ),
+        encoding="utf-8",
+    )
+
+    context = build_discovery_context(profile_yaml)
+
+    assert "Scoring work sentinel." in context.scoring_context
+
+
+def test_discovery_context_includes_only_scoring_sections(tmp_path):
+    root = tmp_path / "knowledge"
+    profile_dir = root / "profile"
+    profile_dir.mkdir(parents=True)
+    (profile_dir / "work-experience.yaml").write_text(
+        """
+roles:
+  - id: work-sentinel
+    company: WorkScoringCo
+    title: Senior Product Manager
+    period: {start: 2023-01, end: present}
+    achievements:
+      - area: Work
+        text: WORK_SCORING_SENTINEL.
+""",
+        encoding="utf-8",
+    )
+    (profile_dir / "projects.yaml").write_text(
+        """
+projects:
+  - id: project-sentinel
+    name: ProjectScoring
+    description: PROJECT_SCORING_SENTINEL.
+""",
+        encoding="utf-8",
+    )
+    (profile_dir / "skills.yaml").write_text(
+        """
+skill_groups:
+  - name: SkillsScoring
+    skills: [SKILLS_SCORING_SENTINEL]
+""",
+        encoding="utf-8",
+    )
+    (profile_dir / "education.yaml").write_text(
+        """
+education:
+  - id: education-sentinel
+    institution: EducationSentinel University
+    degree: MBA
+    field: EDUCATION_NON_SCORING_SENTINEL
+""",
+        encoding="utf-8",
+    )
+    (profile_dir / "public-performance.yaml").write_text(
+        """
+talks:
+  - id: talk-sentinel
+    conference: PublicPerformanceSentinelConf
+    title: PUBLIC_PERFORMANCE_NON_SCORING_SENTINEL
+""",
+        encoding="utf-8",
+    )
+    (profile_dir / "values.yaml").write_text(
+        """
+values:
+  - id: values-sentinel
+    title: ValuesSentinel
+    description: VALUES_NON_SCORING_SENTINEL.
+""",
+        encoding="utf-8",
+    )
+    profile_yaml = root / "profile.yaml"
+    profile_yaml.write_text(
+        _valid_profile_yaml(
+            profile_sections="""
+  work_experience: profile/work-experience.yaml
+  projects: profile/projects.yaml
+  education: profile/education.yaml
+  skills: profile/skills.yaml
+  public_speaking: profile/public-performance.yaml
+  values: profile/values.yaml
+"""
+        ),
+        encoding="utf-8",
+    )
+
+    context = build_discovery_context(profile_yaml)
+
+    assert "WORK_SCORING_SENTINEL" in context.scoring_context
+    assert "PROJECT_SCORING_SENTINEL" in context.scoring_context
+    assert "SKILLS_SCORING_SENTINEL" in context.scoring_context
+    assert "EDUCATION_NON_SCORING_SENTINEL" not in context.scoring_context
+    assert "PUBLIC_PERFORMANCE_NON_SCORING_SENTINEL" not in context.scoring_context
+    assert "VALUES_NON_SCORING_SENTINEL" not in context.scoring_context
+
+
 def test_search_salary_is_optional_and_omitted_from_discovery_context_when_absent(
     tmp_path,
 ):

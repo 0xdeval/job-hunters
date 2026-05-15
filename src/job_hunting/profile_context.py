@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import yaml
 
@@ -230,7 +230,7 @@ def build_discovery_context(
     path: Path | str = "knowledge/profile.yaml",
 ) -> DiscoveryProfileContext:
     config = load_profile_config(path)
-    sections = load_profile_sections(config)
+    sections = load_profile_sections(config, only_keys=DISCOVERY_SCORING_SECTIONS)
     scoring_context = _format_discovery_scoring_context(sections)
     if not scoring_context:
         raise ProfileConfigError(
@@ -360,7 +360,9 @@ def _parse_profile_sections(raw: dict[str, Any]) -> dict[str, Path]:
     return sections
 
 
-def load_profile_sections(config: ProfileConfig) -> ProfileSections:
+def load_profile_sections(
+    config: ProfileConfig, only_keys: Iterable[str] | None = None
+) -> ProfileSections:
     values: dict[str, Any] = {
         "work_experience": (),
         "projects": (),
@@ -371,7 +373,10 @@ def load_profile_sections(config: ProfileConfig) -> ProfileSections:
         "values": (),
         "interests": (),
     }
+    requested_keys = set(only_keys) if only_keys is not None else None
     for key, relative_path in config.profile_sections.items():
+        if requested_keys is not None and key not in requested_keys:
+            continue
         raw = _read_section_yaml(config, key, relative_path)
         if key == "work_experience":
             values["work_experience"] = _parse_work_experience(raw)
