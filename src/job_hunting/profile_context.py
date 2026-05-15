@@ -230,18 +230,16 @@ def build_discovery_context(
     path: Path | str = "knowledge/profile.yaml",
 ) -> DiscoveryProfileContext:
     config = load_profile_config(path)
-    scoring_parts: list[str] = []
-    for key in DISCOVERY_SCORING_SECTIONS:
-        if key in config.profile_sections:
-            scoring_parts.append(_read_section(config, key))
-    if not scoring_parts:
+    sections = load_profile_sections(config)
+    scoring_context = _format_discovery_scoring_context(sections)
+    if not scoring_context:
         raise ProfileConfigError(
             "Discovery scoring requires at least one of profile_sections: "
             + ", ".join(DISCOVERY_SCORING_SECTIONS)
         )
     return DiscoveryProfileContext(
         filter_context=_format_discovery_filter_context(config),
-        scoring_context="\n\n".join(scoring_parts),
+        scoring_context=scoring_context,
     )
 
 
@@ -249,10 +247,10 @@ def build_application_context(
     path: Path | str = "knowledge/profile.yaml",
 ) -> ApplicationProfileContext:
     config = load_profile_config(path)
-    section_parts = [_read_section(config, key) for key in config.profile_sections]
+    sections = load_profile_sections(config)
     return ApplicationProfileContext(
         identity_context=_format_identity_context(config.identity),
-        profile_sections_context="\n\n".join(section_parts),
+        profile_sections_context="\n\n".join(_format_application_sections(sections)),
         section_keys=tuple(config.profile_sections.keys()),
     )
 
@@ -588,17 +586,155 @@ def _parse_value_items(raw_items: list[Any], name: str) -> tuple[ValueItem, ...]
     return tuple(items)
 
 
-def _read_section(config: ProfileConfig, key: str) -> str:
-    relative_path = config.profile_sections[key]
-    full_path = config.root_dir / relative_path
-    try:
-        content = full_path.read_text(encoding="utf-8").strip()
-    except FileNotFoundError as exc:
-        raise ProfileConfigError(
-            f"profile_sections.{key} points to {relative_path}, "
-            "but the file does not exist"
-        ) from exc
-    return f"## {key}\n\n{content}"
+def _format_period(period: PeriodConfig | None) -> str:
+    if period is None:
+        return ""
+    start = _format_period_value(period.start)
+    end = "Present" if period.end == "present" else _format_period_value(period.end)
+    return f"{start} - {end}"
+
+
+def _format_period_value(value: str) -> str:
+    year, month = value.split("-")
+    month_name = (
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    )[int(month) - 1]
+    return f"{month_name} {year}"
+
+
+def _format_links_for_context(links: tuple[SectionLink, ...]) -> str:
+    if not links:
+        return ""
+    return " Links: " + ". ".join(f"{link.label}: {link.url}" for link in links)
+
+
+def _format_work_experience_context(roles: tuple[WorkRole, ...]) -> str:
+    lines = ["## Work experience"]
+    for role in roles:
+        period = _format_period(role.period)
+        lines.append(f"- {role.company} - {role.title} ({period})")
+        if role.industry:
+            lines.append(f"  Industry: {role.industry}")
+        if role.company_summary:
+            lines.append(f"  Company summary: {role.company_summary}")
+        for achievement in role.achievements:
+            lines.append(
+                f"  - {achievement.area}: {achievement.text}"
+                f"{_format_links_for_context(achievement.links)}"
+            )
+    return "\n".join(lines)
+
+
+def _format_projects_context(projects: tuple[ProjectItem, ...]) -> str:
+    lines = ["## Projects"]
+    for project in projects:
+        heading = project.name
+        if project.title:
+            heading = f"{heading} - {project.title}"
+        period = _format_period(project.period)
+        if period:
+            heading = f"{heading} ({period})"
+        lines.append(f"- {heading}")
+        lines.append(f"  Description: {project.description}")
+        if project.links:
+            lines.append(f"  {_format_links_for_context(project.links).lstrip()}")
+        if project.tech_stack:
+            lines.append(f"  Tech stack: {', '.join(project.tech_stack)}")
+    return "\n".join(lines)
+
+
+def _format_education_context(education: tuple[EducationItem, ...]) -> str:
+    lines = ["## Education"]
+    for item in education:
+        heading = f"{item.degree}, {item.field} - {item.institution}"
+        period = _format_period(item.period)
+        if period:
+            heading = f"{heading} ({period})"
+        lines.append(f"- {heading}")
+        if item.grade:
+            lines.append(f"  Grade: {item.grade}")
+        if item.links:
+            lines.append(f"  {_format_links_for_context(item.links).lstrip()}")
+    return "\n".join(lines)
+
+
+def _format_skills_context(skill_groups: tuple[SkillGroup, ...]) -> str:
+    lines = ["## Skills"]
+    for group in skill_groups:
+        lines.append(f"- {group.name}: {', '.join(group.skills)}")
+    return "\n".join(lines)
+
+
+def _format_public_performance_context(
+    talks: tuple[TalkItem, ...],
+    publications: tuple[PublicationItem, ...],
+) -> str:
+    lines = ["## Public performance"]
+    for talk in talks:
+        lines.append(
+            f"- Talk: {talk.conference}: {talk.title}"
+            f"{_format_links_for_context(talk.links)}"
+        )
+    for publication in publications:
+        description = f": {publication.description}" if publication.description else ""
+        lines.append(
+            f"- Publication: {publication.title}{description}"
+            f"{_format_links_for_context(publication.links)}"
+        )
+    return "\n".join(lines)
+
+
+def _format_values_context(
+    values: tuple[ValueItem, ...],
+    interests: tuple[ValueItem, ...],
+) -> str:
+    lines = ["## Values and interests"]
+    for value in values:
+        lines.append(f"- Value - {value.title}: {value.description}")
+    for interest in interests:
+        lines.append(f"- Interest - {interest.title}: {interest.description}")
+    return "\n".join(lines)
+
+
+def _format_application_sections(sections: ProfileSections) -> list[str]:
+    parts: list[str] = []
+    if sections.work_experience:
+        parts.append(_format_work_experience_context(sections.work_experience))
+    if sections.projects:
+        parts.append(_format_projects_context(sections.projects))
+    if sections.education:
+        parts.append(_format_education_context(sections.education))
+    if sections.skills:
+        parts.append(_format_skills_context(sections.skills))
+    if sections.talks or sections.publications:
+        parts.append(
+            _format_public_performance_context(sections.talks, sections.publications)
+        )
+    if sections.values or sections.interests:
+        parts.append(_format_values_context(sections.values, sections.interests))
+    return parts
+
+
+def _format_discovery_scoring_context(sections: ProfileSections) -> str:
+    parts = ["Generated candidate scoring context"]
+    if sections.work_experience:
+        parts.append(_format_work_experience_context(sections.work_experience))
+    if sections.projects:
+        parts.append(_format_projects_context(sections.projects))
+    if sections.skills:
+        parts.append(_format_skills_context(sections.skills))
+    return "\n\n".join(parts) if len(parts) > 1 else ""
 
 
 def _format_identity_context(identity: IdentityConfig) -> str:
