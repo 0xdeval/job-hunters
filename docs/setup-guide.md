@@ -77,13 +77,12 @@ knowledge/
 ├── profile.yaml
 ├── search-criteria.md
 └── profile/
-    ├── profile-summary.md
-    ├── work-experience.md
-    ├── personal-projects.md
-    ├── education.md
-    ├── skills.md
-    ├── values-and-interests.md
-    └── public-speaking.md
+    ├── work-experience.yaml
+    ├── personal-projects.yaml
+    ├── education.yaml
+    ├── skills.yaml
+    ├── values-and-interests.yaml
+    └── public-performance.yaml
 ```
 
 ### `knowledge/profile.yaml`
@@ -96,7 +95,7 @@ The file has three top-level sections:
 
 - `identity` — name, preferred name, email, location, work modes, and links used in generated artifacts.
 - `search` — structured Discovery filters for roles, seniority, locations, industries, optional salary, and dealbreakers.
-- `profile_sections` — explicit links to the profile markdown files the system may use as evidence.
+- `profile_sections` — explicit links to the structured YAML profile section files the system may use as evidence.
 
 Good structure looks like:
 
@@ -134,14 +133,15 @@ search:
     - Requires relocation
 
 profile_sections:
-  summary: profile/profile-summary.md
-  work_experience: profile/work-experience.md
-  projects: profile/personal-projects.md
-  education: profile/education.md
-  skills: profile/skills.md
-  public_speaking: profile/public-speaking.md
-  values: profile/values-and-interests.md
+  work_experience: profile/work-experience.yaml
+  projects: profile/personal-projects.yaml
+  education: profile/education.yaml
+  skills: profile/skills.yaml
+  public_speaking: profile/public-performance.yaml
+  values: profile/values-and-interests.yaml
 ```
+
+Supported `profile_sections` keys are `work_experience`, `projects`, `education`, `skills`, `public_speaking`, and `values`. There is no `summary` section; Discovery scoring generates its profile summary from the structured scoring sections.
 
 `knowledge/search-criteria.md` is deprecated for vacancy discovery and application generation. Put search controls in `knowledge/profile.yaml` under `search`.
 
@@ -207,7 +207,7 @@ Supported template variables:
 
 The crew uses the legacy `knowledge/search-criteria.md` content plus this query config to decide which roles, seniorities, and industries to put into these templates. Vacancy discovery does not use this file; it uses `knowledge/profile.yaml.search`.
 
-## 4. Fill Profile Files
+## 4. Fill Profile Section Files
 
 Profile files live in:
 
@@ -215,24 +215,138 @@ Profile files live in:
 knowledge/profile/
 ```
 
-Use real information. The agents use this content to score roles, evaluate company fit, and prepare application materials.
+Use real information. The agents use this structured YAML to score roles, evaluate company fit, and prepare application materials. Copy examples from `examples/knowledge/profile/*.yaml`, keep section filenames as `.yaml`, and use HTTPS-only URLs in every `links` entry. Clickable links are underlined in rendered CV PDFs.
 
 | File | What to fill |
 | --- | --- |
-| `profile-summary.md` | Short career summary: who you are, what you specialize in, strongest achievements. |
-| `work-experience.md` | Jobs, dates, company context, responsibilities, measurable results. |
-| `personal-projects.md` | Side projects, open-source work, links, tech stack, outcomes. |
-| `education.md` | Education, certifications, and formal training. |
-| `skills.md` | Skills, tools, domains, and working strengths. |
-| `values-and-interests.md` | Topics, industries, values, work style, company traits you care about. |
-| `public-speaking.md` | Talks, publications, community activity, public proof. |
+| `work-experience.yaml` | Roles, company context, dates, industry, and achievements. |
+| `personal-projects.yaml` | Side projects, open-source work, links, tech stack, outcomes. |
+| `education.yaml` | Education, certifications, grades, and formal training. |
+| `skills.yaml` | Skill groups and skills. The LLM chooses the most relevant skills for artifacts unless tailored output specifies skills. |
+| `public-performance.yaml` | Talks and publications. This file is referenced by the `public_speaking` section key. |
+| `values-and-interests.yaml` | Structured values and interests. |
+
+`show_on_cv` is optional and defaults to `true`. Set it to `false` to keep source context available while excluding that item or group from the CV. For work experience, it applies at the role level.
+
+### `work-experience.yaml`
+
+```yaml
+roles:
+  - id: acme
+    company: Acme
+    title: Senior Product Manager
+    period:
+      start: 2022-08
+      end: 2026-04
+    industry: B2B SaaS
+    "company_summary": Product analytics platform
+    show_on_cv: true
+    achievements:
+      - area: Activation
+        text: Grew activation by 30% through onboarding experiments.
+        links:
+          - label: Case study
+            url: https://example.com/case-study
+```
+
+Achievement links are optional. When an achievement has multiple links, the CV renders them at the end of the sentence separated with a dot.
+
+### `personal-projects.yaml`
+
+```yaml
+projects:
+  - id: hush
+    name: Hush
+    title: Crypto privacy payment solution
+    period:
+      start: 2026-02
+      end: 2026-03
+    description: Privacy-focused DeFi integration for private collateral and repayments.
+    show_on_cv: true
+    links:
+      - label: GitHub
+        url: https://github.com/0xdeval/hush
+    tech_stack:
+      - Aave
+      - Privacy Infrastructure
+```
+
+### `education.yaml`
+
+```yaml
+education:
+  - id: hse-applied-math
+    institution: Higher School of Economics
+    degree: Bachelor's degree
+    field: Computational and Applied Mathematics
+    period:
+      start: 2016-09
+      end: 2020-06
+    grade: GPA 8/10
+    show_on_cv: true
+    links:
+      - label: Program
+        url: https://example.com/program
+```
+
+### `skills.yaml`
+
+```yaml
+skill_groups:
+  - name: Product
+    show_on_cv: true
+    skills:
+      - Product strategy
+      - Product discovery
+      - Roadmap prioritization
+  - name: Web3 / FinTech
+    skills:
+      - Web3
+      - DeFi
+      - Stablecoin payments
+```
+
+### `public-performance.yaml`
+
+```yaml
+talks:
+  - id: product-summit-discovery
+    conference: Example Product Summit
+    title: Product discovery in regulated markets
+    show_on_cv: true
+    links:
+      - label: Event
+        url: https://example.com/product-summit
+
+publications:
+  - id: onboarding-metrics
+    title: Designing onboarding metrics that teams can trust
+    description: Practical onboarding measurement for product teams.
+    links:
+      - label: Article
+        url: https://example.com/onboarding-metrics
+```
+
+### `values-and-interests.yaml`
+
+```yaml
+values:
+  - id: ownership
+    title: High ownership
+    description: Prefers owning ambiguous product problems from discovery through launch.
+
+interests:
+  - id: privacy-preserving-products
+    title: Privacy-preserving products
+    description: Interested in products that make privacy usable without sacrificing compliance.
+```
 
 Practical tips:
 
 - Use bullet points.
 - Include numbers where possible.
 - Mention industries and product areas clearly.
-- Do not invent achievements; the system will use this text in application materials.
+- Do not invent achievements; the system will use this structured evidence in application materials.
 
 ## 5. Run Commands
 
@@ -301,7 +415,7 @@ First-time setup:
 
 1. Fill `.env`.
 2. Copy `examples/knowledge/profile.yaml` to `knowledge/profile.yaml` and fill it.
-3. Fill the markdown files referenced by `knowledge/profile.yaml.profile_sections`.
+3. Fill the YAML files referenced by `knowledge/profile.yaml.profile_sections`.
 4. Add initial companies to `knowledge/companies.csv`.
 5. Run `job_hunting_bot`.
 6. Run `job_hunting_discover`.
@@ -309,7 +423,7 @@ First-time setup:
 Ongoing usage:
 
 - Run `job_hunting_discover` daily or every few hours.
-- Run `job_hunting_source_companies` when you want more company sources; keep `knowledge/search-criteria.md` filled until company sourcing is migrated to `profile.yaml`.
+- Run `job_hunting_source_companies` when you want more company sources; keep `knowledge/search-criteria.md` only for this legacy company sourcing input.
 - Review `data/<YYYY-MM-DD>/company_candidates.csv` as the audit log.
 - Approve or decline candidates directly in Telegram (`Approve` appends to `knowledge/approved-company-candidates.csv`).
 - Run `job_hunting_discover` again to search vacancies from the expanded company list.
@@ -342,7 +456,7 @@ If nothing is found:
 
 If company sourcing finds irrelevant companies:
 
-- Make `knowledge/search-criteria.md` more specific.
+- Make the legacy company sourcing notes in `knowledge/search-criteria.md` more specific.
 - Remove broad templates from `knowledge/company-source-queries.yaml`.
 - Add clearer industries and exclusions.
 
