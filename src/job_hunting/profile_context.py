@@ -599,6 +599,10 @@ def _format_period(period: PeriodConfig | None) -> str:
     return f"{start} - {end}"
 
 
+def format_period_for_display(period: PeriodConfig | None) -> str:
+    return _format_period(period)
+
+
 def _format_period_value(value: str) -> str:
     year, month = value.split("-")
     month_name = (

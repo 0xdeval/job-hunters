@@ -2,10 +2,17 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
+
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from job_hunting.profile_context import ProfileConfigError, load_profile_config
+from job_hunting.profile_context import (
+    ProfileConfigError,
+    format_period_for_display,
+    load_profile_config,
+    load_profile_sections,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE_PATH = PROJECT_ROOT / "personalized-outreach/templates/cv-template.md"
@@ -107,7 +114,7 @@ class CVGeneratorTool(BaseTool):
 def _create_normalized_profile_json() -> str | None:
     try:
         profile = load_profile_config(PROFILE_CONFIG_PATH)
-        sections = _read_profile_sections(profile.root_dir, profile.profile_sections)
+        sections = load_profile_sections(profile)
     except (OSError, ProfileConfigError):
         return None
 
@@ -129,7 +136,12 @@ def _create_normalized_profile_json() -> str | None:
                 for link in profile.identity.links
             ],
         },
-        "sections": sections,
+        "workExperience": _work_experience_to_json(sections.work_experience),
+        "projects": _projects_to_json(sections.projects),
+        "education": _education_to_json(sections.education),
+        "skillGroups": _skill_groups_to_json(sections.skills),
+        "talks": _talks_to_json(sections.talks),
+        "publications": _publications_to_json(sections.publications),
     }
 
     with tempfile.NamedTemporaryFile(
@@ -139,10 +151,103 @@ def _create_normalized_profile_json() -> str | None:
         return f.name
 
 
-def _read_profile_sections(
-    root_dir: Path, profile_sections: dict[str, Path]
-) -> dict[str, str]:
-    sections: dict[str, str] = {}
-    for key, relative_path in profile_sections.items():
-        sections[key] = (root_dir / relative_path).read_text(encoding="utf-8").strip()
-    return sections
+def _links_to_json(links: Any) -> list[dict[str, str]]:
+    return [
+        {
+            "label": link.label,
+            "url": link.url,
+        }
+        for link in links
+    ]
+
+
+def _work_experience_to_json(roles: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": role.id,
+            "company": role.company,
+            "position": role.title,
+            "period": format_period_for_display(role.period),
+            "industry": role.industry,
+            "companyDescription": role.company_summary,
+            "showOnCv": role.show_on_cv,
+            "achievements": [
+                {
+                    "area": achievement.area,
+                    "text": achievement.text,
+                    "links": _links_to_json(achievement.links),
+                }
+                for achievement in role.achievements
+            ],
+        }
+        for role in roles
+    ]
+
+
+def _projects_to_json(projects: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": project.id,
+            "name": project.name,
+            "title": project.title,
+            "period": format_period_for_display(project.period),
+            "description": project.description,
+            "showOnCv": project.show_on_cv,
+            "links": _links_to_json(project.links),
+            "techStack": list(project.tech_stack),
+        }
+        for project in projects
+    ]
+
+
+def _education_to_json(education: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": item.id,
+            "institution": item.institution,
+            "degree": item.degree,
+            "field": item.field,
+            "period": format_period_for_display(item.period),
+            "grade": item.grade,
+            "showOnCv": item.show_on_cv,
+            "links": _links_to_json(item.links),
+        }
+        for item in education
+    ]
+
+
+def _skill_groups_to_json(skill_groups: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": group.name,
+            "showOnCv": group.show_on_cv,
+            "skills": list(group.skills),
+        }
+        for group in skill_groups
+    ]
+
+
+def _talks_to_json(talks: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": talk.id,
+            "conference": talk.conference,
+            "title": talk.title,
+            "showOnCv": talk.show_on_cv,
+            "links": _links_to_json(talk.links),
+        }
+        for talk in talks
+    ]
+
+
+def _publications_to_json(publications: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": publication.id,
+            "title": publication.title,
+            "description": publication.description,
+            "showOnCv": publication.show_on_cv,
+            "links": _links_to_json(publication.links),
+        }
+        for publication in publications
+    ]

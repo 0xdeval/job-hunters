@@ -37,6 +37,37 @@ def test_cv_generator_calls_node_script(tmp_path):
         ),
         profile_sections={},
     )
+    profile_sections = SimpleNamespace(
+        work_experience=(
+            SimpleNamespace(
+                id="analytical-engines",
+                company="Analytical Engines Ltd",
+                title="Product Lead",
+                period=SimpleNamespace(start="1842-01", end="1843-12"),
+                industry="Computing",
+                company_summary="Mechanical computation company",
+                show_on_cv=True,
+                achievements=(
+                    SimpleNamespace(
+                        area="Launch",
+                        text="Shipped programmable workflows.",
+                        links=(
+                            SimpleNamespace(
+                                label="Proof", url="https://example.com/proof"
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        projects=(),
+        education=(),
+        skills=(),
+        talks=(),
+        publications=(),
+        values=(),
+        interests=(),
+    )
 
     def fake_run(command, **kwargs):
         if command[0] == "node":
@@ -49,6 +80,10 @@ def test_cv_generator_calls_node_script(tmp_path):
             "job_hunting.tools.cv_generator.load_profile_config",
             return_value=profile_config,
         ),
+        patch(
+            "job_hunting.tools.cv_generator.load_profile_sections",
+            return_value=profile_sections,
+        ),
         patch("subprocess.run", side_effect=fake_run) as mock_run,
     ):
         tool._run(
@@ -60,6 +95,13 @@ def test_cv_generator_calls_node_script(tmp_path):
         assert "fill-template.js" in " ".join(first_call_args)
         assert len(first_call_args) == 7
         assert captured_profile["identity"]["fullName"] == "Ada Lovelace"
+        assert captured_profile["workExperience"][0]["position"] == "Product Lead"
+        assert captured_profile["workExperience"][0]["period"] == "Jan 1842 - Dec 1843"
+        assert captured_profile["workExperience"][0]["achievements"][0]["area"] == "Launch"
+        assert (
+            captured_profile["workExperience"][0]["achievements"][0]["links"][0]["label"]
+            == "Proof"
+        )
         assert all(not path.exists() for path in captured_temp_paths)
 
 
@@ -84,6 +126,10 @@ def test_cv_generator_falls_back_when_profile_section_file_is_missing(tmp_path):
         patch(
             "job_hunting.tools.cv_generator.load_profile_config",
             return_value=profile_config,
+        ),
+        patch(
+            "job_hunting.tools.cv_generator.load_profile_sections",
+            side_effect=OSError("profile section missing"),
         ),
         patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="", stderr="")) as mock_run,
     ):
