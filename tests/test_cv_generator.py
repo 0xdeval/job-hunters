@@ -245,6 +245,241 @@ def test_cv_node_renderer_uses_profile_yaml_identity_and_sections(tmp_path):
     assert "Data Science and analyst experience" not in rendered
 
 
+def test_cv_node_renderer_renders_structured_profile_artifacts(tmp_path):
+    template_path = Path("personalized-outreach/templates/cv-template.md").resolve()
+    script_path = Path("personalized-outreach/scripts/fill-template.js").resolve()
+    tailored_path = tmp_path / "tailored.json"
+    output_path = tmp_path / "cv.tex"
+    profile_dir = tmp_path / "profile"
+    normalized_profile_path = tmp_path / "normalized-profile.json"
+    profile_dir.mkdir()
+
+    tailored_path.write_text(
+        json.dumps(
+            {
+                "summary": "Product leader for analytical engines.",
+                "workExperienceIds": ["hidden-role", "early-role", "analytical-engines"],
+                "workExperienceDescriptions": {},
+                "projectIds": ["hidden-project", "hush"],
+                "projectDescriptions": {
+                    "hush": ["Built private collaboration workflows."]
+                },
+                "skills": "",
+            }
+        ),
+        encoding="utf-8",
+    )
+    normalized_profile_path.write_text(
+        json.dumps(
+            {
+                "identity": {
+                    "fullName": "Ada Lovelace",
+                    "email": "ada@example.com",
+                    "location": "London, UK",
+                    "links": [],
+                },
+                "sections": {
+                    "education": "## Education\n\n- Legacy University should not render",
+                    "public_speaking": "## Public speaking\n\n- LegacyConf should not render",
+                },
+                "workExperience": [
+                    {
+                        "id": "early-role",
+                        "company": "Early Engines",
+                        "position": "Analyst",
+                        "location": "London, UK",
+                        "period": "Jan 1842 - Dec 1843",
+                        "companyDescription": "Computing research lab",
+                        "achievements": [
+                            "Documented early computing programs [cite: 1].",
+                            "Documented early computing programs.",
+                        ],
+                    },
+                    {
+                        "id": "hidden-role",
+                        "company": "Hidden Engines",
+                        "position": "Hidden Role",
+                        "period": "Jan 1845 - Dec 1845",
+                        "companyDescription": "Hidden company",
+                        "showOnCv": False,
+                        "achievements": ["Hidden achievement."],
+                    },
+                    {
+                        "id": "analytical-engines",
+                        "company": "Analytical Engines Ltd",
+                        "position": "Product Lead",
+                        "location": "London, UK",
+                        "period": "Feb 1844 - Present",
+                        "companyDescription": "Mechanical computation company",
+                        "achievements": [
+                            {
+                                "area": "Launch",
+                                "text": "Shipped programmable workflows",
+                                "links": [
+                                    {
+                                        "label": "Hush",
+                                        "url": "https://example.com/hush",
+                                    },
+                                    {
+                                        "label": "Growthcast",
+                                        "url": "https://example.com/growthcast",
+                                    },
+                                ],
+                            }
+                        ],
+                    },
+                ],
+                "projects": [
+                    {
+                        "id": "hush",
+                        "name": "Hush",
+                        "period": "Mar 1844 - Apr 1844",
+                        "description": "Encrypted team notes.",
+                        "techStack": ["Node.js", "PostgreSQL"],
+                        "links": [
+                            {
+                                "label": "Demo",
+                                "url": "https://example.com/demo?x=50%25&ok=1#frag",
+                            }
+                        ],
+                    },
+                    {
+                        "id": "hidden-project",
+                        "name": "Hidden Project",
+                        "description": "Hidden project description.",
+                        "showOnCv": False,
+                        "links": [],
+                    },
+                ],
+                "education": [
+                    {
+                        "institution": "University of London",
+                        "degree": "Certificate",
+                        "field": "Mathematics",
+                        "period": "1841 - 1842",
+                        "grade": "Distinction",
+                        "links": [
+                            {
+                                "label": "Transcript",
+                                "url": "https://example.com/transcript",
+                            }
+                        ],
+                    },
+                    {
+                        "institution": "Hidden University",
+                        "degree": "Hidden Degree",
+                        "field": "Hidden Field",
+                        "showOnCv": False,
+                        "links": [],
+                    }
+                ],
+                "skillGroups": [
+                    {
+                        "label": "Product",
+                        "skills": ["Roadmaps", "Launch strategy"],
+                    },
+                    {
+                        "label": "Technical",
+                        "skills": ["SQL", "Node.js"],
+                    },
+                    {
+                        "label": "Hidden Skills",
+                        "skills": ["Hidden skill"],
+                        "showOnCv": False,
+                    },
+                ],
+                "talks": [
+                    {
+                        "conference": "ProductConf",
+                        "title": "Computing products for teams",
+                        "links": [
+                            {
+                                "label": "Slides",
+                                "url": "https://example.com/slides",
+                            }
+                        ],
+                    },
+                    {
+                        "conference": "HiddenConf",
+                        "title": "Hidden talk",
+                        "showOnCv": False,
+                        "links": [],
+                    }
+                ],
+                "publications": [
+                    {
+                        "title": "Notes on the Analytical Engine",
+                        "description": "A practical computing reference.",
+                        "links": [
+                            {
+                                "label": "Paper",
+                                "url": "https://example.com/paper",
+                            }
+                        ],
+                    },
+                    {
+                        "title": "Hidden Publication",
+                        "description": "Hidden publication description.",
+                        "showOnCv": False,
+                        "links": [],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            "node",
+            str(script_path),
+            str(template_path),
+            str(tailored_path),
+            str(output_path),
+            str(profile_dir),
+            str(normalized_profile_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "Product Lead | Analytical Engines Ltd" in rendered
+    assert "Analyst | Early Engines" in rendered
+    assert "Hidden Engines" not in rendered
+    assert "Hidden Project" not in rendered
+    assert "Hidden University" not in rendered
+    assert "Hidden Skills" not in rendered
+    assert "HiddenConf" not in rendered
+    assert "Hidden Publication" not in rendered
+    assert rendered.count("Documented early computing programs") == 1
+    assert rendered.index("Product Lead | Analytical Engines Ltd") < rendered.index(
+        "Analyst | Early Engines"
+    )
+    assert (
+        "Launch: Shipped programmable workflows "
+        "\\href{https://example.com/hush}{\\underline{Hush}}. "
+        "\\href{https://example.com/growthcast}{\\underline{Growthcast}}"
+    ) in rendered
+    assert "{Hush}{Mar 1844 - Apr 1844}" in rendered
+    assert (
+        "\\href{https://example.com/demo?x=50\\%25\\&ok=1\\#frag}{\\underline{Demo}}"
+        in rendered
+    )
+    assert "Node.js, PostgreSQL" in rendered
+    assert "University of London --- Certificate, Mathematics --- 1841 - 1842 --- Distinction" in rendered
+    assert "\\href{https://example.com/transcript}{\\underline{Transcript}}" in rendered
+    assert "ProductConf --- Computing products for teams" in rendered
+    assert "\\href{https://example.com/slides}{\\underline{Slides}}" in rendered
+    assert "Notes on the Analytical Engine --- A practical computing reference." in rendered
+    assert "\\href{https://example.com/paper}{\\underline{Paper}}" in rendered
+    assert "\\textbf{Product:} Roadmaps, Launch strategy" in rendered
+    assert "\\textbf{Technical:} SQL, Node.js" in rendered
+    assert "Legacy University should not render" not in rendered
+    assert "LegacyConf should not render" not in rendered
+
+
 def test_cv_node_renderer_formats_public_speaking_markdown_as_cv_bullets(tmp_path):
     template_path = Path("personalized-outreach/templates/cv-template.md").resolve()
     script_path = Path("personalized-outreach/scripts/fill-template.js").resolve()
