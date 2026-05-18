@@ -343,7 +343,7 @@ Examples:
   and skills.
 - Cover-letter positioning summary generated from identity, values/interests,
   target roles, and selected proof points.
-- Discovery candidate scoring summary generated from search criteria, work
+- Discovery candidate scoring summary generated from profile search preferences, work
   experience, projects, and skills.
 
 Generated summaries are disposable prompt context, not source-of-truth profile

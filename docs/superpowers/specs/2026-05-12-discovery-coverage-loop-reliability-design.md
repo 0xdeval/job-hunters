@@ -77,7 +77,7 @@ the initial template state.
 `DiscoveryCoverageTool` remains restricted to recordable terminal statuses:
 
 - `completed`: the provided career page was evaluated successfully, even if no
-  jobs matched the search criteria.
+  jobs matched the profile search preferences.
 - `skipped`: the provided career page cannot be evaluated as a usable career
   page for that company.
 - `failed`: scraping, tool execution, or the per-company crew run failed.

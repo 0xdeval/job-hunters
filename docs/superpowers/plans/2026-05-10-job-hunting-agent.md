@@ -57,7 +57,7 @@ src/job_hunting/
     └── app.py                           CREATE
 
 knowledge/
-└── search-criteria.md                   CREATE — filled by user before first run
+└── profile.yaml.search                   CREATE — filled by user before first run
 
 .env.example                             CREATE
 pyproject.toml                           MODIFY — add deps, update entry points
@@ -1049,7 +1049,7 @@ vacancy_scout:
 fit_analyst:
   role: Fit Analyst
   goal: >
-    Score each vacancy against the candidate's profile and search criteria,
+    Score each vacancy against the candidate's profile and profile search preferences,
     and determine whether a cover letter is required.
   backstory: >
     You are a senior recruiter and career advisor who can precisely assess
@@ -1105,12 +1105,12 @@ score_vacancies_task:
     The previous task returned a list of vacancy IDs (e.g. ["acme-corp--senior-pm"]).
     For each vacancy ID, read the file at data/{today}/vacancies/{vacancy_id}.json
     using FileReadTool with the exact path.
-    2. Read knowledge/search-criteria.md — these are the candidate's filters.
+    2. Read knowledge/profile.yaml — these are the candidate's filters.
     3. Read knowledge/profile/profile-summary.md for candidate context.
     4. For each vacancy:
-       a. Score it 0-100 based on fit with the candidate's profile and search criteria.
+       a. Score it 0-100 based on fit with the candidate's profile and profile search preferences.
           Consider: role title match, seniority, location/remote preference, industry,
-          company stage, salary range, excluded criteria from search-criteria.md.
+          company stage, salary range, excluded criteria from profile.yaml.search.
        b. Determine requires_cover_letter: true if the job description explicitly asks
           for one, false otherwise.
        c. Set status to "skipped" if score is clearly below criteria (do not send to Telegram).
@@ -1896,7 +1896,7 @@ git commit -m "feat: Career Advisor agent and Chainlit chat interface"
 
 **Files:**
 - Modify: `src/job_hunting/main.py`
-- Create: `knowledge/search-criteria.md`
+- Create: `knowledge/profile.yaml`
 
 - [ ] **Step 1: Replace main.py with new entry points**
 
@@ -1939,12 +1939,12 @@ python -c "from job_hunting.main import run_advisor; print('run_advisor OK')"
 
 Expected: each prints its OK message without exceptions.
 
-- [ ] **Step 3: Create knowledge/search-criteria.md template**
+- [ ] **Step 3: Create knowledge/profile.yaml template**
 
-Create `knowledge/search-criteria.md`:
+Create `knowledge/profile.yaml`:
 
 ```markdown
-# Job Search Criteria
+# Job Profile Search Preferences
 
 ## Target role titles
 - Product Manager
@@ -2001,7 +2001,7 @@ job_hunting_discover --help 2>/dev/null || python -c "from job_hunting.main impo
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/job_hunting/main.py knowledge/search-criteria.md
+git add src/job_hunting/main.py knowledge/profile.yaml
 git commit -m "feat: main entry points and search-criteria template — system ready for first run"
 ```
 

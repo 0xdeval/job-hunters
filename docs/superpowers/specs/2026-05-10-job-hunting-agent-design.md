@@ -87,7 +87,7 @@ knowledge/
 │   ├── public-performance.md
 │   └── values-and-interests.md
 ├── companies.csv              # company name + career page URL
-└── search-criteria.md         # qualitative filters for agent reasoning: role titles,
+└── profile.yaml.search         # qualitative filters for agent reasoning: role titles,
                                #   seniority, salary range, location, work format,
                                #   industry, company stage, excluded companies/criteria
 ```

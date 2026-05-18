@@ -23,7 +23,7 @@ core control data.
 
 In scope:
 
-- Replace `knowledge/search-criteria.md` usage in Discovery Crew with
+- Replace `knowledge/profile.yaml` usage in Discovery Crew with
   `knowledge/profile.yaml.search`.
 - Use `knowledge/profile.yaml.identity` for generated artifact identity fields.
 - Use `knowledge/profile.yaml.profile_sections` as an explicit allowlist of
@@ -48,12 +48,12 @@ Discovery currently has two agents:
 
 - `vacancy_scout`
   - receives `today`, `company`, and `career_page`
-  - reads `knowledge/search-criteria.md`
+  - reads `knowledge/profile.yaml`
   - scrapes career pages and job pages
   - writes vacancy JSON files under `data/<date>/vacancies/`
 - `fit_analyst`
   - reads vacancy JSON files
-  - reads `knowledge/search-criteria.md`
+  - reads `knowledge/profile.yaml`
   - reads `knowledge/profile/profile-summary.md`
   - writes score JSON files under `data/<date>/scores/`
 
@@ -186,7 +186,7 @@ in the CV header.
 
 ### Search
 
-`search` is structured only. It replaces free-form `search-criteria.md` for
+`search` is structured only. It replaces free-form `profile.yaml.search` for
 Discovery Crew filtering and scoring.
 
 It contains:
@@ -426,7 +426,7 @@ The implementation plan should preserve this design boundary:
 
 - user-owned YAML defines identity, search, and allowed profile evidence files
 - code-owned policies decide which sections each crew receives
-- Discovery replaces `search-criteria.md` with `profile.yaml.search`
+- Discovery replaces `profile.yaml.search` with `profile.yaml.search`
 - Application keeps Profile Steward as the central brief builder
 - renderers remove hardcoded personal content before any larger renderer
   migration

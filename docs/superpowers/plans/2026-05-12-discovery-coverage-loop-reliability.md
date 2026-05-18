@@ -537,7 +537,7 @@ In `src/job_hunting/crews/discovery/config/tasks.yaml`, replace only `scrape_vac
     Company: {company}
     Career page: {career_page}
 
-    1. Use the "Read a file's content" tool to read knowledge/search-criteria.md. Use this to understand the roles, seniority, and keywords the candidate is interested in.
+    1. Use the "Read a file's content" tool to read knowledge/profile.yaml. Use this to understand the roles, seniority, and keywords the candidate is interested in.
     2. Use the "Scrape website with Selenium" tool to scrape the provided Career page URL for this company.
        Identify all open job positions (title and URL) available from this career page.
        If the provided career page cannot be evaluated as a career page for this company, use "Discovery Coverage Reporter" with:
@@ -558,7 +558,7 @@ In `src/job_hunting/crews/discovery/config/tasks.yaml`, replace only `scrape_vac
        - matched_jobs: 0
        - notes: the specific failure reason
        Then return [].
-    3. **FILTERING STEP**: Look at the list of job titles found. Only proceed with roles that are a potential match for the candidate based on the search criteria. Ignore completely irrelevant roles (e.g. if the candidate is an engineer, ignore HR, Legal, or unrelated Sales roles).
+    3. **FILTERING STEP**: Look at the list of job titles found. Only proceed with roles that are a potential match for the candidate based on the profile search preferences. Ignore completely irrelevant roles (e.g. if the candidate is an engineer, ignore HR, Legal, or unrelated Sales roles).
     4. For each vacancy that passed the filter:
        a. Use "Vacancy Dedup Checker" with the vacancy URL. If result is "duplicate", skip entirely.
        b. Use the "Scrape website with Selenium" tool to open the job-specific URL. Read the page content.

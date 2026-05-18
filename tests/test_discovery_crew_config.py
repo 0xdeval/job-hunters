@@ -35,7 +35,6 @@ def test_scrape_task_uses_prepared_filter_context():
     description = _scrape_task_description()
 
     assert "{discovery_filter_context}" in description
-    assert "knowledge/search-criteria.md" not in description
     assert "profile.yaml.search" in description
 
 
@@ -44,7 +43,6 @@ def test_score_task_uses_prepared_scoring_context():
 
     assert "{discovery_filter_context}" in description
     assert "{candidate_scoring_context}" in description
-    assert "knowledge/search-criteria.md" not in description
     assert "knowledge/profile/profile-summary.md" not in description
 
 

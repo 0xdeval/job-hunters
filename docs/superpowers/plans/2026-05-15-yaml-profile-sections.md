@@ -1536,7 +1536,7 @@ interests:
 In `README.md`, add or update the profile setup section with:
 
 ```markdown
-Profile evidence is YAML-only. Keep identity and search criteria in
+Profile evidence is YAML-only. Keep identity and profile search preferences in
 `knowledge/profile.yaml`, then point `profile_sections` at YAML files under
 `knowledge/profile/`.
 
