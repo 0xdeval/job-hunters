@@ -243,6 +243,13 @@ def test_run_returns_startup_diagnostics_when_chrome_cannot_start(monkeypatch):
         lambda: ["/usr/bin/chromedriver"],
     )
 
+    class _Result:
+        returncode = 1
+        stdout = ""
+        stderr = "driver failed"
+
+    monkeypatch.setattr(scraper.subprocess, "run", lambda *args, **kwargs: _Result())
+
     def fake_chrome(service, options):
         raise SessionNotCreatedException("Chrome instance exited")
 
@@ -255,4 +262,7 @@ def test_run_returns_startup_diagnostics_when_chrome_cannot_start(monkeypatch):
     assert "Browser binary: /usr/bin/chromium" in result
     assert "ChromeDriver: /usr/bin/chromedriver" in result
     assert "Tried ChromeDrivers: /usr/bin/chromedriver" in result
+    assert "Executable diagnostics:" in result
+    assert "/usr/bin/chromium --version exited 1: driver failed" in result
+    assert "/usr/bin/chromedriver --version exited 1: driver failed" in result
     assert "Retried with legacy --headless" in result

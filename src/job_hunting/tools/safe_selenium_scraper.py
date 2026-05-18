@@ -1,4 +1,5 @@
 import time
+import subprocess
 from os import environ
 from pathlib import Path
 from shutil import which
@@ -59,7 +60,7 @@ class SafeSeleniumScrapingTool(BaseTool):
                 driver_paths = [ChromeDriverManager().install()]
             driver_log_path = str(Path(profile_dir) / "chromedriver.log")
             driver = None
-            startup_errors: list[WebDriverException] = []
+            startup_errors: list[str] = []
 
             for driver_path in driver_paths:
                 for legacy_headless in (False, True):
@@ -72,7 +73,10 @@ class SafeSeleniumScrapingTool(BaseTool):
                         driver = webdriver.Chrome(service=service, options=chrome_options)
                         break
                     except WebDriverException as exc:
-                        startup_errors.append(exc)
+                        headless_mode = "--headless" if legacy_headless else "--headless=new"
+                        startup_errors.append(
+                            f"{driver_path} with {headless_mode}: {exc}"
+                        )
                 if driver is not None:
                     break
 
@@ -175,7 +179,7 @@ def _build_chrome_options(profile_dir: str, legacy_headless: bool = False) -> Op
 
 
 def _format_chrome_startup_error(
-    startup_errors: list[WebDriverException],
+    startup_errors: list[str],
     driver_paths: list[str],
     driver_log_path: str,
 ) -> str:
@@ -192,10 +196,42 @@ def _format_chrome_startup_error(
         "Retried with legacy --headless after --headless=new failed.\n"
         f"Selenium error: {latest_error}"
     )
+    command_diagnostics = _format_command_diagnostics(browser_path, driver_paths)
+    if command_diagnostics:
+        message += f"\nExecutable diagnostics:\n{command_diagnostics}"
     driver_log = _read_text_tail(driver_log_path)
     if driver_log:
         message += f"\nChromeDriver log tail:\n{driver_log}"
     return message
+
+
+def _format_command_diagnostics(browser_path: str, driver_paths: list[str]) -> str:
+    commands = []
+    if browser_path != "not found":
+        commands.append(browser_path)
+    commands.extend(driver_paths)
+    diagnostics = [_command_version_diagnostic(path) for path in _unique_paths(commands)]
+    return "\n".join(diagnostic for diagnostic in diagnostics if diagnostic)
+
+
+def _command_version_diagnostic(path: str) -> str:
+    try:
+        result = subprocess.run(
+            [path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except OSError as exc:
+        return f"{path} --version failed to start: {exc}"
+    except subprocess.TimeoutExpired:
+        return f"{path} --version timed out"
+
+    stdout = result.stdout.strip()
+    stderr = result.stderr.strip()
+    details = stdout or stderr or "no output"
+    return f"{path} --version exited {result.returncode}: {details}"
 
 
 def _read_text_tail(path: str, max_chars: int = 4000) -> str:
