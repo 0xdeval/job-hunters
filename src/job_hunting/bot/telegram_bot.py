@@ -187,7 +187,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await query.edit_message_text(f"✅ Approved — starting application for {full_id}…")
             threading.Thread(
                 target=_run_application_flow,
-                args=(full_id, date),
+                args=(full_id, date, chat_id),
                 daemon=True,
             ).start()
 
@@ -211,11 +211,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.edit_message_text(f"❌ Error processing click: {str(e)}")
 
 
-def _run_application_flow(vacancy_id: str, date: str) -> None:
+def _run_application_flow(
+    vacancy_id: str, date: str, chat_id: int | str | None = None
+) -> None:
     from job_hunting.flows.application_flow import ApplicationFlow
 
     try:
-        ApplicationFlow(vacancy_id=vacancy_id, date=date).kickoff()
+        ApplicationFlow(vacancy_id=vacancy_id, date=date, chat_id=chat_id).kickoff()
     except Exception as e:
         logger.error(f"ApplicationFlow failed for {vacancy_id}: {e}")
 

@@ -109,3 +109,48 @@ def test_notify_completion_does_not_fail_when_telegram_completion_times_out(
     updated_score = json.loads(score_path.read_text(encoding="utf-8"))
     assert updated_score["status"] == "documents_ready"
     assert updated_score["notification_error"] == "Timed out"
+
+
+def test_notify_completion_sends_documents_to_callback_chat(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    score_dir = Path("data/2026-05-14/scores")
+    score_dir.mkdir(parents=True)
+    score_path = score_dir / "acme--pm.json"
+    score = {
+        "vacancy_id": "acme--pm",
+        "date": "2026-05-14",
+        "company": "Acme",
+        "title": "Senior PM",
+        "score": 90,
+        "status": "approved",
+    }
+    score_path.write_text(json.dumps(score), encoding="utf-8")
+    notifier = MagicMock()
+    flow = ApplicationFlow(
+        vacancy_id="acme--pm",
+        date="2026-05-14",
+        notifier=notifier,
+        chat_id=98765,
+    )
+
+    flow.notify_completion(
+        {
+            "vacancy": {
+                "company": "Acme",
+                "title": "Senior PM",
+                "url": "https://acme.example/jobs/pm",
+            },
+            "score": score,
+        }
+    )
+
+    notifier._run.assert_called_once_with(
+        message_type="completion",
+        company="Acme",
+        title="Senior PM",
+        url="https://acme.example/jobs/pm",
+        score=90,
+        vacancy_id="acme--pm",
+        date="2026-05-14",
+        chat_id=98765,
+    )
