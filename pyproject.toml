@@ -1,6 +1,6 @@
 [project]
 name = "job_hunting"
-version = "0.3.1"
+version = "0.3.2"
 description = "job-hunting using crewAI"
 authors = [{ name = "Your Name", email = "you@example.com" }]
 requires-python = ">=3.10,<3.14"

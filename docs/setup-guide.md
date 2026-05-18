@@ -36,6 +36,88 @@ job_hunting_advisor
 
 Without activation, use `uv run <command>`.
 
+### Linux Server Browser Dependencies
+
+Vacancy extraction uses Selenium with a real Chrome-compatible browser and a
+matching ChromeDriver. The browser and driver major versions must match. A
+common failure mode is Chromium `147` with ChromeDriver `114`, which can appear
+as `DevToolsActivePort file doesn't exist`.
+
+`job_hunting_bot` and `job_hunting_discover` check this at launch. If no browser
+or driver is found, they stop immediately with an install message instead of
+failing later inside a scraping task.
+
+On Ubuntu/Debian, install Chromium and the libraries usually needed by headless
+Chrome:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  chromium \
+  chromium-driver \
+  fonts-liberation \
+  libasound2t64 \
+  libatk-bridge2.0-0 \
+  libatk1.0-0 \
+  libcups2 \
+  libdrm2 \
+  libgbm1 \
+  libgtk-3-0 \
+  libnspr4 \
+  libnss3 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxrandr2 \
+  xdg-utils
+```
+
+CV and cover-letter PDF generation uses `pdflatex`. Install the TeX Live
+runtime packages on Ubuntu/Debian servers:
+
+```bash
+sudo apt-get install -y texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
+pdflatex --version
+```
+
+`texlive-latex-extra` is required for packages used by the generated CV and
+cover-letter templates, including `enumitem.sty`.
+
+If your distribution uses a different binary path, set it explicitly:
+
+```bash
+export CHROME_BINARY=/usr/bin/chromium
+export CHROMEDRIVER_PATH=/usr/bin/chromedriver
+```
+
+If Ubuntu installed Chromium as a Snap, `which chromium` usually returns
+`/snap/bin/chromium`. Use the Snap-provided matching driver:
+
+```bash
+export CHROME_BINARY=/snap/bin/chromium
+export CHROMEDRIVER_PATH=/snap/bin/chromium.chromedriver
+```
+
+On VPS hosts, including Hetzner, services are often run as `root` without a
+desktop session. The scraper starts Chromium with a temporary profile directory,
+modern headless mode, `--no-sandbox`, and `--disable-dev-shm-usage` for that
+environment. If Chromium exits before Selenium can create a session, the scraper
+retries once with legacy `--headless` and returns the ChromeDriver log tail along
+with the browser and driver paths it used. Keep the two environment variables
+above in the same shell, systemd unit, or process manager config that starts the
+bot.
+
+For a long-running service, put the same variables in the systemd unit or shell
+profile used to start the bot.
+
+You can check the server before starting the bot:
+
+```bash
+which chromium || which chromium-browser || which google-chrome || which google-chrome-stable
+which chromedriver || which chromium.chromedriver
+chromium --version
+chromedriver --version || chromium.chromedriver --version
+```
+
 ## 2. Configure Environment Variables
 
 Create your local environment file:
@@ -54,6 +136,8 @@ TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 TELEGRAM_CHAT_ID=your-telegram-chat-id
 TELEGRAM_ALLOWED_USERS=
 MIN_SCORE=70
+CHROME_BINARY=
+CHROMEDRIVER_PATH=
 ```
 
 What each value means:
@@ -67,6 +151,8 @@ What each value means:
 | `TELEGRAM_CHAT_ID` | Chat where notifications should be sent. |
 | `TELEGRAM_ALLOWED_USERS` | Optional comma-separated Telegram user IDs allowed to interact with the bot. |
 | `MIN_SCORE` | Minimum vacancy score needed before Telegram approval is requested. |
+| `CHROME_BINARY` | Optional explicit path to Chrome/Chromium, for example `/usr/bin/chromium`. |
+| `CHROMEDRIVER_PATH` | Optional explicit path to matching ChromeDriver, for example `/snap/bin/chromium.chromedriver`. |
 
 ## 3. Fill Files Before Starting
 

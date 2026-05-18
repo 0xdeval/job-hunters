@@ -56,6 +56,38 @@ uv sync --no-install-package onnxruntime
 source .venv/bin/activate
 ```
 
+Selenium vacancy extraction also requires a Chrome-compatible browser on the
+host. On Linux servers, install Chromium or Google Chrome before starting
+`job_hunting_bot` or `job_hunting_discover`. Install a matching ChromeDriver as
+well; the browser and driver major versions must match.
+
+```bash
+sudo apt-get update
+sudo apt-get install -y chromium chromium-driver
+```
+
+PDF generation for tailored CVs and cover letters also requires `pdflatex`:
+
+```bash
+sudo apt-get install -y texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
+pdflatex --version
+```
+
+If Ubuntu installed Chromium as a Snap, use the Snap-provided browser and
+driver together:
+
+```bash
+export CHROME_BINARY=/snap/bin/chromium
+export CHROMEDRIVER_PATH=/snap/bin/chromium.chromedriver
+```
+
+The launch commands check these prerequisites and return a clear error if the
+browser or driver is not found. The scraper uses modern headless mode and a
+temporary Chrome profile directory for VPS/server environments. If modern
+headless Chromium exits before creating a WebDriver session, the scraper
+automatically retries with legacy `--headless` and returns the ChromeDriver log
+tail with the browser and driver paths it used.
+
 ### 2. Configure environment
 
 ```bash
@@ -71,6 +103,8 @@ Set values in `.env`:
 - `TELEGRAM_CHAT_ID`
 - `TELEGRAM_ALLOWED_USERS` (optional, comma-separated)
 - `MIN_SCORE` (default: `70`)
+- `CHROME_BINARY` (optional, for example `/usr/bin/chromium`)
+- `CHROMEDRIVER_PATH` (optional, for example `/snap/bin/chromium.chromedriver`)
 
 ### 3. Add profile and target companies
 
