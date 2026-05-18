@@ -5,12 +5,16 @@ load_dotenv()
 
 def run_discovery() -> None:
     """Cron entry point — discover and score new vacancies, send Telegram approval requests."""
+    from job_hunting.tools.safe_selenium_scraper import require_chrome_binary
+    require_chrome_binary()
     from job_hunting.flows.discovery_flow import DiscoveryFlow
     DiscoveryFlow().kickoff()
 
 
 def run_bot() -> None:
     """Long-running entry point — start the Telegram bot."""
+    from job_hunting.tools.safe_selenium_scraper import require_chrome_binary
+    require_chrome_binary()
     from job_hunting.bot.telegram_bot import run
     run()
 

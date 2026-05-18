@@ -56,6 +56,23 @@ uv sync --no-install-package onnxruntime
 source .venv/bin/activate
 ```
 
+Selenium vacancy extraction also requires a Chrome-compatible browser on the
+host. On Linux servers, install Chromium or Google Chrome before starting
+`job_hunting_bot` or `job_hunting_discover`:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y chromium
+```
+
+The launch commands check this prerequisite and return a clear error if no
+browser is found. If Selenium cannot find your installed browser automatically,
+set:
+
+```bash
+export CHROME_BINARY=/usr/bin/chromium
+```
+
 ### 2. Configure environment
 
 ```bash
@@ -71,6 +88,7 @@ Set values in `.env`:
 - `TELEGRAM_CHAT_ID`
 - `TELEGRAM_ALLOWED_USERS` (optional, comma-separated)
 - `MIN_SCORE` (default: `70`)
+- `CHROME_BINARY` (optional, for example `/usr/bin/chromium`)
 
 ### 3. Add profile and target companies
 

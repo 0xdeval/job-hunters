@@ -1,4 +1,7 @@
 import time
+from os import environ
+from pathlib import Path
+from shutil import which
 from typing import Type, Optional
 from pydantic import BaseModel, Field
 from crewai.tools import BaseTool
@@ -9,6 +12,22 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+
+
+CHROME_BINARY_ENV = "CHROME_BINARY"
+CHROME_BINARY_CANDIDATES = (
+    "google-chrome",
+    "google-chrome-stable",
+    "chromium",
+    "chromium-browser",
+)
+CHROME_INSTALL_HELP = (
+    "Chrome or Chromium is required for Selenium vacancy scraping, but no "
+    "browser binary was found. Install Chromium or Google Chrome on the server "
+    "(Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y chromium), "
+    "or set CHROME_BINARY=/path/to/chrome before starting the service."
+)
+
 
 class SafeSeleniumScrapingSchema(BaseModel):
     website_url: str = Field(description="Mandatory website url to read. Must start with http:// or https://")
@@ -21,6 +40,9 @@ class SafeSeleniumScrapingTool(BaseTool):
 
     def _run(self, website_url: str, css_element: str = "") -> str:
         chrome_options = Options()
+        chrome_binary = _find_chrome_binary()
+        if chrome_binary:
+            chrome_options.binary_location = chrome_binary
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
@@ -98,3 +120,32 @@ class SafeSeleniumScrapingTool(BaseTool):
             return f"Error scraping with Selenium: {str(e)}"
         finally:
             driver.quit()
+
+
+def _find_chrome_binary() -> str | None:
+    configured = environ.get(CHROME_BINARY_ENV, "").strip()
+    if configured:
+        return configured
+
+    for executable in CHROME_BINARY_CANDIDATES:
+        path = which(executable)
+        if path:
+            return path
+
+    for path in (
+        Path("/usr/bin/google-chrome"),
+        Path("/usr/bin/google-chrome-stable"),
+        Path("/usr/bin/chromium"),
+        Path("/usr/bin/chromium-browser"),
+    ):
+        if path.exists():
+            return str(path)
+
+    return None
+
+
+def require_chrome_binary() -> str:
+    chrome_binary = _find_chrome_binary()
+    if not chrome_binary:
+        raise RuntimeError(CHROME_INSTALL_HELP)
+    return chrome_binary

@@ -36,6 +36,54 @@ job_hunting_advisor
 
 Without activation, use `uv run <command>`.
 
+### Linux Server Browser Dependencies
+
+Vacancy extraction uses Selenium with a real Chrome-compatible browser. The
+Python dependency installs Selenium and downloads ChromeDriver, but the server
+must also have Chrome or Chromium installed.
+
+`job_hunting_bot` and `job_hunting_discover` check this at launch. If no browser
+is found, they stop immediately with an install message instead of failing later
+inside a scraping task.
+
+On Ubuntu/Debian, install Chromium and the libraries usually needed by headless
+Chrome:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  chromium \
+  fonts-liberation \
+  libasound2t64 \
+  libatk-bridge2.0-0 \
+  libatk1.0-0 \
+  libcups2 \
+  libdrm2 \
+  libgbm1 \
+  libgtk-3-0 \
+  libnspr4 \
+  libnss3 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxrandr2 \
+  xdg-utils
+```
+
+If your distribution uses a different binary path, set it explicitly:
+
+```bash
+export CHROME_BINARY=/usr/bin/chromium
+```
+
+For a long-running service, put the same variable in the systemd unit or shell
+profile used to start the bot.
+
+You can check the server before starting the bot:
+
+```bash
+which chromium || which chromium-browser || which google-chrome || which google-chrome-stable
+```
+
 ## 2. Configure Environment Variables
 
 Create your local environment file:
@@ -54,6 +102,7 @@ TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 TELEGRAM_CHAT_ID=your-telegram-chat-id
 TELEGRAM_ALLOWED_USERS=
 MIN_SCORE=70
+CHROME_BINARY=
 ```
 
 What each value means:
@@ -67,6 +116,7 @@ What each value means:
 | `TELEGRAM_CHAT_ID` | Chat where notifications should be sent. |
 | `TELEGRAM_ALLOWED_USERS` | Optional comma-separated Telegram user IDs allowed to interact with the bot. |
 | `MIN_SCORE` | Minimum vacancy score needed before Telegram approval is requested. |
+| `CHROME_BINARY` | Optional explicit path to Chrome/Chromium, for example `/usr/bin/chromium`. |
 
 ## 3. Fill Files Before Starting
 
