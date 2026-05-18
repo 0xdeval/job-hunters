@@ -211,4 +211,9 @@ def test_vacancy_approve_callback_still_uses_vacancy_path(tmp_path, monkeypatch)
     update_status.assert_called_once_with("vacancy-id", "2026-05-13", "approved")
     thread_mock.assert_called_once()
     thread_instance.start.assert_called_once()
+    assert thread_mock.call_args.kwargs["args"] == (
+        "full-vacancy-id",
+        "2026-05-13",
+        123,
+    )
     assert "Approved" in query.edit_message_text.await_args.args[0]

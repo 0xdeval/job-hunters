@@ -15,10 +15,17 @@ _DEFAULT_NOTIFIER = object()
 
 class ApplicationFlow(Flow):
 
-    def __init__(self, vacancy_id: str, date: str, notifier=_DEFAULT_NOTIFIER):
+    def __init__(
+        self,
+        vacancy_id: str,
+        date: str,
+        notifier=_DEFAULT_NOTIFIER,
+        chat_id: int | str | None = None,
+    ):
         super().__init__()
         self._vacancy_id = vacancy_id
         self._date = date
+        self._chat_id = chat_id
         self._notifier = (
             TelegramNotifierTool() if notifier is _DEFAULT_NOTIFIER else notifier
         )
@@ -76,6 +83,7 @@ class ApplicationFlow(Flow):
                 score=score["score"],
                 vacancy_id=self._vacancy_id,
                 date=self._date,
+                chat_id=self._chat_id,
             )
         except Exception as exc:
             logger.warning(
