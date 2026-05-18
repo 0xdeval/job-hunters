@@ -1,4 +1,3 @@
-import csv
 import json
 import logging
 import threading
@@ -16,8 +15,7 @@ from telegram.ext import (
 )
 
 from job_hunting.config import TELEGRAM_ALLOWED_USERS, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
-from job_hunting.tools.company_candidate_store import CompanyCandidateStore
-from job_hunting.utils import company_candidates_file, scores_dir
+from job_hunting.utils import scores_dir
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -98,62 +96,6 @@ def _parse_callback(data: str) -> tuple[str, str, str]:
     return parts[0], parts[1], parts[2]
 
 
-def _resolve_company_candidate_id(
-    store: CompanyCandidateStore, candidate_id_or_prefix: str
-) -> tuple[str | None, str | None]:
-    output_file = company_candidates_file(store.run_date)
-    if not output_file.exists():
-        return None, f"Could not find company candidate {candidate_id_or_prefix}"
-
-    with output_file.open("r", newline="", encoding="utf-8-sig") as f:
-        candidate_ids = [
-            row.get("candidate_id", "").strip()
-            for row in csv.DictReader(f)
-            if row.get("candidate_id", "").strip()
-        ]
-
-    if candidate_id_or_prefix in candidate_ids:
-        return candidate_id_or_prefix, None
-
-    matches = [cid for cid in candidate_ids if cid.startswith(candidate_id_or_prefix)]
-    if len(matches) == 1:
-        return matches[0], None
-    if len(matches) > 1:
-        return None, f"Ambiguous company candidate {candidate_id_or_prefix}"
-    return None, f"Could not find company candidate {candidate_id_or_prefix}"
-
-
-def _handle_company_review(action: str, candidate_id: str, run_date: str) -> tuple[str, bool]:
-    store = CompanyCandidateStore(run_date=run_date)
-    resolved_candidate_id, resolve_error = _resolve_company_candidate_id(store, candidate_id)
-    if resolve_error is not None or resolved_candidate_id is None:
-        return resolve_error or f"Could not find company candidate {candidate_id}", False
-
-    if action == "company_approve":
-        status = "approved"
-    elif action == "company_decline":
-        status = "declined"
-    else:
-        return f"Unsupported company action: {action}", False
-
-    try:
-        reviewed_row = store.review_candidate(resolved_candidate_id, status=status)
-    except ValueError:
-        return f"Could not find company candidate {candidate_id}", False
-
-    if action == "company_decline":
-        return f"❌ Declined company: {reviewed_row.get('company', resolved_candidate_id)}", True
-
-    appended = store.append_approved_company(reviewed_row)
-    company_name = reviewed_row.get("company", resolved_candidate_id)
-    if appended:
-        return (
-            f"✅ Approved company: {company_name} (added to approved sourced companies)",
-            True,
-        )
-    return f"✅ Approved company: {company_name} (already approved or known)", True
-
-
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     user_id = query.from_user.id
@@ -170,14 +112,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     try:
         action, vacancy_id, date = _parse_callback(query.data)
-
-        if action in {"company_approve", "company_decline"}:
-            message, ok = _handle_company_review(action, vacancy_id, date)
-            if not ok:
-                await query.edit_message_text(f"❌ Error: {message}")
-                return
-            await query.edit_message_text(message)
-            return
 
         if action == "approve":
             full_id = _update_status(vacancy_id, date, "approved")

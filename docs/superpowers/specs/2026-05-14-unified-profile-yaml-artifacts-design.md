@@ -36,9 +36,6 @@ In scope:
 
 Out of scope:
 
-- Company Sourcing Crew changes. The company sourcing crew is expected to be
-  removed in a later release, so its current `search-criteria.md` usage should
-  not shape this design.
 - Full CV renderer migration from Node to Python. The first implementation
   should keep current renderers and remove hardcoding. A later phase may move
   CV rendering into Python.

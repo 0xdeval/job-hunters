@@ -31,7 +31,6 @@ After activation, commands are available as:
 ```bash
 job_hunting_bot
 job_hunting_discover
-job_hunting_source_companies
 job_hunting_advisor
 ```
 
@@ -76,9 +75,7 @@ The common setup files are:
 ```text
 knowledge/
 ├── companies.csv
-├── company-source-queries.yaml
 ├── profile.yaml
-├── search-criteria.md
 └── profile/
     ├── work-experience.yaml
     ├── personal-projects.yaml
@@ -148,9 +145,7 @@ profile_sections:
 
 Supported `profile_sections` keys are `work_experience`, `projects`, `education`, `skills`, `public_speaking`, and `values`. There is no `summary` section; Discovery scoring generates its profile summary from the structured scoring sections.
 
-`knowledge/search-criteria.md` is deprecated for vacancy discovery and application generation. Put search controls in `knowledge/profile.yaml` under `search`.
-
-Current company sourcing still reads `knowledge/search-criteria.md` as a legacy input. Keep a short version of this file only if you run `job_hunting_source_companies`; otherwise `knowledge/profile.yaml` is the source of truth.
+Put search controls in `knowledge/profile.yaml` under `search`.
 
 `search.salary` is optional. If present, Discovery includes it as a salary threshold. If omitted, Discovery and application generation continue without a salary constraint.
 
@@ -175,42 +170,6 @@ Good career page URLs often look like:
 - `https://jobs.lever.co/company`
 - `https://jobs.personio.com/company`
 - `https://company.com/careers`
-
-Company sourcing sends each new candidate to Telegram for review. Click `Approve` to append the company to `knowledge/approved-company-candidates.csv`, or `Decline` to keep it out of discovery. The rich generated file under `data/<date>/company_candidates.csv` remains the audit log for sourced candidates and review decisions.
-
-### `knowledge/company-source-queries.yaml`
-
-This file controls how the company sourcing crew searches for new companies.
-
-It does not replace your profile. It only defines search templates and ATS domains.
-
-Useful structure:
-
-```yaml
-source_groups:
-  ats_search:
-    enabled: true
-    domains:
-      - "jobs.ashbyhq.com"
-      - "job-boards.greenhouse.io"
-      - "jobs.lever.co"
-
-  web_search:
-    enabled: true
-    templates:
-      - "{role} {seniority} {industry} remote Europe"
-      - "{role} {seniority} {industry} remote EMEA"
-      - "site:{domain} {role} {industry} remote"
-```
-
-Supported template variables:
-
-- `{role}`
-- `{seniority}`
-- `{industry}`
-- `{domain}`
-
-The crew uses the legacy `knowledge/search-criteria.md` content plus this query config to decide which roles, seniorities, and industries to put into these templates. Vacancy discovery does not use this file; it uses `knowledge/profile.yaml.search`.
 
 ## 4. Fill Profile Section Files
 
@@ -391,21 +350,6 @@ Application artifact filenames use the company and role in PascalCase:
 - `Kraken-SeniorProductManager-QA.md`
 - `Kraken-SeniorProductManager-CoverLetter.pdf`
 
-Run company sourcing:
-
-```bash
-job_hunting_source_companies
-```
-
-Use it when you want new company career-page candidates.
-
-Output:
-
-- `data/<YYYY-MM-DD>/company_candidates.csv`
-- Telegram notification when new candidates need review
-
-Company sourcing sends each new candidate to Telegram for review. Click `Approve` to append the company to `knowledge/approved-company-candidates.csv`, or `Decline` to keep it out of discovery. The rich generated file under `data/<date>/company_candidates.csv` remains the audit log for sourced candidates and review decisions.
-
 Run advisor UI:
 
 ```bash
@@ -428,10 +372,7 @@ First-time setup:
 Ongoing usage:
 
 - Run `job_hunting_discover` daily or every few hours.
-- Run `job_hunting_source_companies` when you want more company sources; keep `knowledge/search-criteria.md` only for this legacy company sourcing input.
-- Review `data/<YYYY-MM-DD>/company_candidates.csv` as the audit log.
-- Approve or decline candidates directly in Telegram (`Approve` appends to `knowledge/approved-company-candidates.csv`).
-- Run `job_hunting_discover` again to search vacancies from the expanded company list.
+- Edit `knowledge/companies.csv` when you want to add or remove monitored companies.
 
 ## 7. Troubleshooting
 
@@ -458,12 +399,6 @@ If nothing is found:
 - Check that `knowledge/companies.csv` has valid career page URLs.
 - Check that `knowledge/profile.yaml.search` is not too restrictive.
 - Check that `.env` contains valid LLM and Telegram settings.
-
-If company sourcing finds irrelevant companies:
-
-- Make the legacy company sourcing notes in `knowledge/search-criteria.md` more specific.
-- Remove broad templates from `knowledge/company-source-queries.yaml`.
-- Add clearer industries and exclusions.
 
 If Telegram does not work:
 

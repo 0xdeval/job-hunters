@@ -750,9 +750,7 @@ from unittest.mock import patch
 from job_hunting.profile_context import DiscoveryProfileContext
 ```
 
-For each test that captures `kickoff_inputs` (`test_discovery_flow_runs_one_kickoff_per_company`,
-`test_discovery_flow_uses_approved_company_candidates`, and the other kickoff-input assertions
-reported by `rg -n "kickoff_inputs" tests/test_discovery_flow.py`), wrap `flow.run_discovery_crew()`
+For each test that captures `kickoff_inputs`, wrap `flow.run_discovery_crew()`
 with:
 
 ```python
@@ -860,7 +858,7 @@ Expected: PASS.
 git add src/job_hunting/flows/discovery_flow.py src/job_hunting/crews/discovery/config/tasks.yaml tests/test_discovery_crew_config.py tests/test_discovery_flow.py
 git commit -m "Feed discovery from profile YAML context" -m "Discovery needs structured search filters and controlled candidate scoring context instead of free-form search-criteria reads.
 
-Constraint: Company sourcing is out of scope and should not influence this integration.
+Constraint: Discovery and artifact generation are the only integration targets.
 Rejected: Keeping search-criteria.md in Discovery prompts | it duplicates profile.yaml.search and keeps filters free-form.
 Confidence: high
 Scope-risk: moderate
