@@ -89,8 +89,11 @@ export CHROMEDRIVER_PATH=/snap/bin/chromium.chromedriver
 On VPS hosts, including Hetzner, services are often run as `root` without a
 desktop session. The scraper starts Chromium with a temporary profile directory,
 modern headless mode, `--no-sandbox`, and `--disable-dev-shm-usage` for that
-environment. Keep the two environment variables above in the same shell,
-systemd unit, or process manager config that starts the bot.
+environment. If Chromium exits before Selenium can create a session, the scraper
+retries once with legacy `--headless` and returns the ChromeDriver log tail along
+with the browser and driver paths it used. Keep the two environment variables
+above in the same shell, systemd unit, or process manager config that starts the
+bot.
 
 For a long-running service, put the same variables in the systemd unit or shell
 profile used to start the bot.

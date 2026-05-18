@@ -10,6 +10,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
@@ -52,9 +53,29 @@ class SafeSeleniumScrapingTool(BaseTool):
 
     def _run(self, website_url: str, css_element: str = "") -> str:
         with TemporaryDirectory(prefix="job-hunting-chrome-") as profile_dir:
-            chrome_options = _build_chrome_options(profile_dir)
-            service = Service(_find_chromedriver() or ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=chrome_options)
+            driver_path = _find_chromedriver() or ChromeDriverManager().install()
+            driver_log_path = str(Path(profile_dir) / "chromedriver.log")
+            driver = None
+            startup_errors: list[WebDriverException] = []
+
+            for legacy_headless in (False, True):
+                chrome_options = _build_chrome_options(
+                    profile_dir,
+                    legacy_headless=legacy_headless,
+                )
+                service = Service(driver_path, log_output=driver_log_path)
+                try:
+                    driver = webdriver.Chrome(service=service, options=chrome_options)
+                    break
+                except WebDriverException as exc:
+                    startup_errors.append(exc)
+
+            if driver is None:
+                return _format_chrome_startup_error(
+                    startup_errors,
+                    driver_path,
+                    driver_log_path,
+                )
 
             try:
                 driver.get(website_url)
@@ -126,13 +147,14 @@ class SafeSeleniumScrapingTool(BaseTool):
                 driver.quit()
 
 
-def _build_chrome_options(profile_dir: str) -> Options:
+def _build_chrome_options(profile_dir: str, legacy_headless: bool = False) -> Options:
     chrome_options = Options()
     chrome_binary = _find_chrome_binary()
     if chrome_binary:
         chrome_options.binary_location = chrome_binary
-    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--headless" if legacy_headless else "--headless=new")
     chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-setuid-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--disable-extensions")
@@ -142,8 +164,37 @@ def _build_chrome_options(profile_dir: str) -> Options:
     chrome_options.add_argument("--remote-debugging-port=0")
     chrome_options.add_argument(f"--user-data-dir={profile_dir}")
     chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     return chrome_options
+
+
+def _format_chrome_startup_error(
+    startup_errors: list[WebDriverException],
+    driver_path: str,
+    driver_log_path: str,
+) -> str:
+    browser_path = _find_chrome_binary() or "not found"
+    latest_error = startup_errors[-1] if startup_errors else "unknown startup error"
+    message = (
+        "Error starting Selenium Chrome session. Chromium exited before a "
+        "WebDriver session was created.\n"
+        f"Browser binary: {browser_path}\n"
+        f"ChromeDriver: {driver_path}\n"
+        "Retried with legacy --headless after --headless=new failed.\n"
+        f"Selenium error: {latest_error}"
+    )
+    driver_log = _read_text_tail(driver_log_path)
+    if driver_log:
+        message += f"\nChromeDriver log tail:\n{driver_log}"
+    return message
+
+
+def _read_text_tail(path: str, max_chars: int = 4000) -> str:
+    try:
+        content = Path(path).read_text(errors="replace")
+    except OSError:
+        return ""
+    return content[-max_chars:].strip()
 
 
 def _find_chrome_binary() -> str | None:

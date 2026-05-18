@@ -66,14 +66,8 @@ sudo apt-get update
 sudo apt-get install -y chromium chromium-driver
 ```
 
-If Ubuntu installed Chromium as a Snap, use the Snap-provided driver:
-
-```bash
-export CHROME_BINARY=/usr/bin/chromium
-export CHROMEDRIVER_PATH=/snap/bin/chromium.chromedriver
-```
-
-If `which chromium` returns `/snap/bin/chromium`, use that path instead:
+If Ubuntu installed Chromium as a Snap, use the Snap-provided browser and
+driver together:
 
 ```bash
 export CHROME_BINARY=/snap/bin/chromium
@@ -82,7 +76,10 @@ export CHROMEDRIVER_PATH=/snap/bin/chromium.chromedriver
 
 The launch commands check these prerequisites and return a clear error if the
 browser or driver is not found. The scraper uses modern headless mode and a
-temporary Chrome profile directory for VPS/server environments.
+temporary Chrome profile directory for VPS/server environments. If modern
+headless Chromium exits before creating a WebDriver session, the scraper
+automatically retries with legacy `--headless` and returns the ChromeDriver log
+tail with the browser and driver paths it used.
 
 ### 2. Configure environment
 

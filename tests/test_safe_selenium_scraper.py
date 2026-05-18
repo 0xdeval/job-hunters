@@ -1,4 +1,5 @@
 from job_hunting.tools import safe_selenium_scraper as scraper
+from selenium.common.exceptions import SessionNotCreatedException
 
 
 def test_find_chrome_binary_uses_explicit_environment_path(monkeypatch):
@@ -105,3 +106,72 @@ def test_build_chrome_options_uses_linux_server_startup_flags(monkeypatch):
     assert "--disable-dev-shm-usage" in options.arguments
     assert "--remote-debugging-port=0" in options.arguments
     assert "--user-data-dir=/tmp/job-hunting-chrome-profile" in options.arguments
+    assert any(argument.startswith("--user-agent=") for argument in options.arguments)
+
+
+def test_run_retries_with_legacy_headless_when_chrome_exits(monkeypatch):
+    monkeypatch.setattr(scraper, "_find_chrome_binary", lambda: "/usr/bin/chromium")
+    monkeypatch.setattr(scraper, "_find_chromedriver", lambda: "/usr/bin/chromedriver")
+    monkeypatch.setattr(scraper.time, "sleep", lambda seconds: None)
+
+    created_options = []
+
+    class _Element:
+        text = "Vacancy"
+
+        def get_attribute(self, name):
+            return "https://example.com/jobs/1" if name == "href" else None
+
+    class _Driver:
+        def get(self, website_url):
+            self.website_url = website_url
+
+        def execute_script(self, script):
+            self.script = script
+
+        def find_element(self, by, value):
+            return _Element()
+
+        def find_elements(self, by, value):
+            return [_Element()]
+
+        def quit(self):
+            self.closed = True
+
+    def fake_chrome(service, options):
+        created_options.append(options.arguments)
+        if len(created_options) == 1:
+            raise SessionNotCreatedException("Chrome instance exited")
+        return _Driver()
+
+    monkeypatch.setattr(scraper.webdriver, "Chrome", fake_chrome)
+    monkeypatch.setattr(
+        scraper.WebDriverWait,
+        "until",
+        lambda self, condition: True,
+    )
+
+    result = scraper.SafeSeleniumScrapingTool()._run("https://example.com/jobs")
+
+    assert "Vacancy" in result
+    assert "--headless=new" in created_options[0]
+    assert "--headless" in created_options[1]
+    assert "--headless=new" not in created_options[1]
+
+
+def test_run_returns_startup_diagnostics_when_chrome_cannot_start(monkeypatch):
+    monkeypatch.setattr(scraper, "_find_chrome_binary", lambda: "/usr/bin/chromium")
+    monkeypatch.setattr(scraper, "_find_chromedriver", lambda: "/usr/bin/chromedriver")
+
+    def fake_chrome(service, options):
+        raise SessionNotCreatedException("Chrome instance exited")
+
+    monkeypatch.setattr(scraper.webdriver, "Chrome", fake_chrome)
+
+    result = scraper.SafeSeleniumScrapingTool()._run("https://example.com/jobs")
+
+    assert "Error starting Selenium Chrome session" in result
+    assert "Chrome instance exited" in result
+    assert "Browser binary: /usr/bin/chromium" in result
+    assert "ChromeDriver: /usr/bin/chromedriver" in result
+    assert "Retried with legacy --headless" in result
