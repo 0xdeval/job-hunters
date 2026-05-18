@@ -1,12 +1,17 @@
 import time
 import subprocess
+import re
 from contextlib import suppress
+from html import unescape
+from html.parser import HTMLParser
 from os import environ
 from pathlib import Path
 from shutil import which
 from socket import socket
 from tempfile import TemporaryDirectory
 from typing import Type, Optional
+from urllib import request
+from urllib.parse import urljoin
 from pydantic import BaseModel, Field
 from crewai.tools import BaseTool
 from selenium import webdriver
@@ -84,12 +89,19 @@ class SafeSeleniumScrapingTool(BaseTool):
                     break
 
             if driver is None:
-                return _format_chrome_startup_error(
+                startup_error = _format_chrome_startup_error(
                     startup_errors,
                     driver_paths,
                     driver_log_path,
                     profile_dir,
                 )
+                static_content = _scrape_static_website(website_url)
+                if static_content:
+                    return (
+                        "Static scrape fallback used because Selenium could not start.\n\n"
+                        f"{static_content}"
+                    )
+                return startup_error
 
             try:
                 driver.get(website_url)
@@ -180,6 +192,84 @@ def _build_chrome_options(profile_dir: str, legacy_headless: bool = False) -> Op
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     return chrome_options
+
+
+class _ReadableHTMLParser(HTMLParser):
+    def __init__(self, base_url: str):
+        super().__init__()
+        self.base_url = base_url
+        self.parts: list[str] = []
+        self._skip_depth = 0
+        self._link_href: str | None = None
+        self._link_text: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style", "noscript", "svg"}:
+            self._skip_depth += 1
+            return
+        if self._skip_depth:
+            return
+        if tag == "a":
+            attrs_dict = dict(attrs)
+            self._link_href = attrs_dict.get("href")
+            self._link_text = []
+        if tag in {"p", "div", "section", "article", "br", "li", "h1", "h2", "h3"}:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style", "noscript", "svg"} and self._skip_depth:
+            self._skip_depth -= 1
+            return
+        if self._skip_depth:
+            return
+        if tag == "a" and self._link_href:
+            text = _collapse_whitespace(" ".join(self._link_text))
+            if text:
+                self.parts.append(f"[{text}]({urljoin(self.base_url, self._link_href)})")
+            self._link_href = None
+            self._link_text = []
+        if tag in {"p", "div", "section", "article", "li", "h1", "h2", "h3"}:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth:
+            return
+        text = _collapse_whitespace(unescape(data))
+        if not text:
+            return
+        if self._link_href is not None:
+            self._link_text.append(text)
+        else:
+            self.parts.append(text)
+
+    def text(self) -> str:
+        lines = [_collapse_whitespace(line) for line in "".join(self.parts).splitlines()]
+        return "\n".join(line for line in lines if line)
+
+
+def _scrape_static_website(website_url: str) -> str:
+    try:
+        http_request = request.Request(
+            website_url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                )
+            },
+        )
+        with request.urlopen(http_request, timeout=15) as response:
+            html = response.read().decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+    parser = _ReadableHTMLParser(website_url)
+    parser.feed(html)
+    return parser.text()
+
+
+def _collapse_whitespace(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def _format_chrome_startup_error(

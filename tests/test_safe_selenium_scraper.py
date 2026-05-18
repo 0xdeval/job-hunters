@@ -379,3 +379,38 @@ def test_run_returns_startup_diagnostics_when_chrome_cannot_start(monkeypatch):
     assert "/usr/bin/chromium launch probe exited 1: browser failed" in result
     assert "/usr/bin/chromedriver service probe exited 1: service failed" in result
     assert "Retried with legacy --headless" in result
+
+
+def test_run_uses_static_fallback_when_chromium_cannot_start(monkeypatch):
+    monkeypatch.setattr(scraper, "_find_chrome_binary", lambda: "/snap/bin/chromium")
+    monkeypatch.setattr(
+        scraper,
+        "_find_chromedriver_candidates",
+        lambda: ["/snap/bin/chromium.chromedriver"],
+    )
+
+    def fake_chrome(service, options):
+        raise SessionNotCreatedException("Chrome instance exited")
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def read(self):
+            return (
+                b"<html><body><h1>Senior Product Engineer</h1>"
+                b"<a href='/apply'>Apply now</a></body></html>"
+            )
+
+    monkeypatch.setattr(scraper.webdriver, "Chrome", fake_chrome)
+    monkeypatch.setattr(scraper, "_format_chrome_startup_error", lambda *args: "selenium failed")
+    monkeypatch.setattr(scraper.request, "urlopen", lambda request, timeout: _Response())
+
+    result = scraper.SafeSeleniumScrapingTool()._run("https://example.com/jobs")
+
+    assert "Static scrape fallback used because Selenium could not start." in result
+    assert "Senior Product Engineer" in result
+    assert "[Apply now](https://example.com/apply)" in result
