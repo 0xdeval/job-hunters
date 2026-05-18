@@ -78,88 +78,7 @@ def test_run_discovery_crew_invokes_one_crew_per_company(tmp_path, monkeypatch):
     ]
 
 
-def test_run_discovery_crew_loads_curated_and_approved_sourced_companies(
-    tmp_path, monkeypatch
-):
-    knowledge = tmp_path / "knowledge"
-    knowledge.mkdir()
-    (knowledge / "companies.csv").write_text(
-        "Company,Career page\n"
-        "Acme,https://acme.com/careers\n",
-        encoding="utf-8",
-    )
-    (knowledge / "approved-company-candidates.csv").write_text(
-        "Company,Career page\n"
-        "Beta,https://beta.com/jobs\n",
-        encoding="utf-8",
-    )
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(discovery_flow_module, "today", lambda: "2026-05-12")
-    kickoff_inputs: list[dict[str, str]] = []
-
-    class _Crew:
-        def kickoff(self, inputs: dict[str, str]) -> None:
-            kickoff_inputs.append(inputs)
-
-    flow = DiscoveryFlow(crew_factory=lambda: _Crew())
-
-    with _patch_build_discovery_context():
-        result = flow.run_discovery_crew()
-
-    assert result == []
-    assert kickoff_inputs == [
-        {
-            "today": "2026-05-12",
-            "company": "Acme",
-            "career_page": "https://acme.com/careers",
-            **_expected_profile_inputs(),
-        },
-        {
-            "today": "2026-05-12",
-            "company": "Beta",
-            "career_page": "https://beta.com/jobs",
-            **_expected_profile_inputs(),
-        },
-    ]
-    rows = _read_coverage_rows(Path("data/2026-05-12/discovery_coverage.csv"))
-    assert [row["company"] for row in rows] == ["Acme", "Beta"]
-
-
-def test_run_discovery_crew_accepts_missing_approved_sourced_file(
-    tmp_path, monkeypatch
-):
-    knowledge = tmp_path / "knowledge"
-    knowledge.mkdir()
-    (knowledge / "companies.csv").write_text(
-        "Company,Career page\n"
-        "Acme,https://acme.com/careers\n",
-        encoding="utf-8",
-    )
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(discovery_flow_module, "today", lambda: "2026-05-12")
-    kickoff_inputs: list[dict[str, str]] = []
-
-    class _Crew:
-        def kickoff(self, inputs: dict[str, str]) -> None:
-            kickoff_inputs.append(inputs)
-
-    flow = DiscoveryFlow(crew_factory=lambda: _Crew())
-
-    with _patch_build_discovery_context():
-        result = flow.run_discovery_crew()
-
-    assert result == []
-    assert kickoff_inputs == [
-        {
-            "today": "2026-05-12",
-            "company": "Acme",
-            "career_page": "https://acme.com/careers",
-            **_expected_profile_inputs(),
-        }
-    ]
-
-
-def test_run_discovery_crew_dedupes_curated_and_approved_sourced_companies(
+def test_run_discovery_crew_dedupes_curated_companies(
     tmp_path, monkeypatch
 ):
     knowledge = tmp_path / "knowledge"
@@ -169,8 +88,9 @@ def test_run_discovery_crew_dedupes_curated_and_approved_sourced_companies(
         "Acme,https://acme.com/careers/\n",
         encoding="utf-8",
     )
-    (knowledge / "approved-company-candidates.csv").write_text(
+    (knowledge / "companies.csv").write_text(
         "Company,Career page\n"
+        "Acme,https://acme.com/careers/\n"
         "Acme Inc.,https://acme.com/careers\n",
         encoding="utf-8",
     )

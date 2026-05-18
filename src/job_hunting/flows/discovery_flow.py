@@ -1,21 +1,16 @@
 import json
 import csv
+import re
 import time
-from pathlib import Path
 from crewai.flow.flow import Flow, listen, start
 from telegram.error import RetryAfter
 from job_hunting.crews.discovery.crew import DiscoveryCrew
 from job_hunting.config import MIN_SCORE
 from job_hunting.profile_context import build_discovery_context
 from job_hunting.tools.discovery_coverage import DiscoveryCoverageStore
-from job_hunting.tools.company_candidate_store import (
-    normalize_company_key,
-    normalize_url_key,
-)
 from job_hunting.tools.telegram_notifier import TelegramNotifierTool
 from job_hunting.utils import (
     all_score_files,
-    approved_company_candidates_file,
     scores_dir,
     today,
     vacancies_dir,
@@ -116,36 +111,30 @@ class DiscoveryFlow(Flow):
         return f"Crew kickoff failed: {type(exc).__name__}: {exc}"
 
     @staticmethod
-    def _load_companies(
-        company_sources: list[Path] | None = None,
-    ) -> list[tuple[str, str]]:
+    def _load_companies() -> list[tuple[str, str]]:
         rows: list[tuple[str, str]] = []
         seen: set[tuple[str, str]] = set()
-        sources = company_sources or [
-            Path("knowledge/companies.csv"),
-            approved_company_candidates_file(),
-        ]
-        for companies_path in sources:
-            try:
-                with companies_path.open(newline="", encoding="utf-8-sig") as file:
-                    reader = csv.DictReader(file)
-                    for row in reader:
-                        company = (row.get("Company") or row.get("company") or "").strip()
-                        career_page = (
-                            row.get("Career page") or row.get("career_page") or ""
-                        ).strip()
-                        if not (company or career_page):
-                            continue
-                        dedupe_key = (
-                            normalize_company_key(company),
-                            normalize_url_key(career_page),
-                        )
-                        if dedupe_key in seen:
-                            continue
-                        seen.add(dedupe_key)
-                        rows.append((company, career_page))
-            except FileNotFoundError:
-                continue
+        companies_path = "knowledge/companies.csv"
+        try:
+            with open(companies_path, newline="", encoding="utf-8-sig") as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    company = (row.get("Company") or row.get("company") or "").strip()
+                    career_page = (
+                        row.get("Career page") or row.get("career_page") or ""
+                    ).strip()
+                    if not (company or career_page):
+                        continue
+                    dedupe_key = (
+                        _normalize_company_key(company),
+                        career_page.rstrip("/").casefold(),
+                    )
+                    if dedupe_key in seen:
+                        continue
+                    seen.add(dedupe_key)
+                    rows.append((company, career_page))
+        except FileNotFoundError:
+            pass
         return rows
 
 
@@ -154,3 +143,9 @@ def _retry_after_seconds(exc: RetryAfter) -> float:
     if hasattr(retry_after, "total_seconds"):
         return retry_after.total_seconds()
     return float(retry_after)
+
+
+def _normalize_company_key(name: str) -> str:
+    normalized = re.sub(r"\s+", " ", name.strip().casefold())
+    normalized = re.sub(r"[,.]", "", normalized)
+    return re.sub(r"\b(inc|incorporated|ltd|llc|gmbh|sa|plc)\b$", "", normalized).strip()
