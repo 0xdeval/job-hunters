@@ -119,6 +119,40 @@ def test_send_completion_message_prefers_company_title_document_names(tmp_path: 
     ]
 
 
+def test_send_completion_message_does_not_attach_latex_fallbacks(tmp_path: Path):
+    tool = TelegramNotifierTool()
+    mock_bot = MagicMock()
+    mock_bot.send_message = AsyncMock(return_value=MagicMock(message_id=43))
+    mock_bot.send_document = AsyncMock(return_value=MagicMock(message_id=44))
+
+    app_dir = tmp_path / "applications" / "typeform--senior-product-manager-growth"
+    app_dir.mkdir(parents=True)
+    (app_dir / "Typeform-SeniorProductManagerGrowth-CV.tex").write_text("fake cv")
+    (app_dir / "Typeform-SeniorProductManagerGrowth-QA.md").write_text("fake qa")
+    (app_dir / "Typeform-SeniorProductManagerGrowth-CoverLetter.tex").write_text(
+        "fake letter"
+    )
+
+    with patch("job_hunting.tools.telegram_notifier.Bot", return_value=mock_bot), patch(
+        "job_hunting.tools.telegram_notifier.applications_dir",
+        return_value=app_dir,
+    ):
+        asyncio.run(
+            tool._send(
+                message_type="completion",
+                company="Typeform",
+                title="Senior Product Manager - Growth",
+                url="https://job-boards.greenhouse.io/typeform/jobs/7905221",
+                score=100,
+                vacancy_id="typeform--senior-product-manager-growth",
+                date="2026-05-18",
+            )
+        )
+
+    sent_paths = [call.kwargs["document"] for call in mock_bot.send_document.call_args_list]
+    assert sent_paths == [app_dir / "Typeform-SeniorProductManagerGrowth-QA.md"]
+
+
 def test_send_completion_message_uses_supplied_chat_id(tmp_path: Path):
     tool = TelegramNotifierTool()
     mock_bot = MagicMock()
@@ -167,4 +201,3 @@ def test_send_text_uses_supplied_chat_id():
     assert kwargs["text"] == "Working on it"
     assert kwargs["parse_mode"] == "HTML"
     assert kwargs["reply_markup"] is None
-

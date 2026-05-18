@@ -175,7 +175,7 @@ class TelegramNotifierTool(BaseTool):
                 "cv",
                 "CV",
                 artifact_filename_candidates(
-                    company, title, "CV", [".pdf", ".tex"], ["cv.pdf", "cv.tex"]
+                    company, title, "CV", [".pdf"], ["cv.pdf"]
                 ),
             ),
             (
@@ -194,8 +194,8 @@ class TelegramNotifierTool(BaseTool):
                     company,
                     title,
                     "CoverLetter",
-                    [".pdf", ".tex"],
-                    ["cover-letter.pdf", "cover-letter.tex"],
+                    [".pdf"],
+                    ["cover-letter.pdf"],
                 ),
             ),
         ]

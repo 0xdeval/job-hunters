@@ -170,8 +170,8 @@ command:
 - Vacancy details extracted: company and title.
 - Application generation started.
 - Q&A answers created when `qa-answers.md` exists.
-- CV created when `cv.pdf` or `cv.tex` exists.
-- Cover letter created when `cover-letter.pdf` or `cover-letter.tex` exists.
+- CV created when `cv.pdf` exists.
+- Cover letter created when `cover-letter.pdf` exists.
 - Cover letter not required when the flow skips it.
 
 Progress messages should be best-effort. Failure to send one interim message
@@ -184,11 +184,10 @@ same conversation where `/prep_vacancy` was started.
 
 Required attachment behavior:
 
-- Attach the generated CV when `cv.pdf` exists, falling back to `cv.tex` only if
-  the PDF is unavailable.
+- Attach the generated CV when `cv.pdf` exists.
 - Attach `qa-answers.md` when it exists.
-- Attach the generated cover letter when `cover-letter.pdf` exists, falling back
-  to `cover-letter.tex` only if the PDF is unavailable.
+- Attach the generated cover letter when `cover-letter.pdf` exists.
+- Never attach intermediate `.tex` files in Telegram completion messages.
 - If no cover letter is required, do not attach a cover letter and state that it
   was not required.
 - After attachments, send or update a final summary message with the company,

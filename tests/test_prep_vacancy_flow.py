@@ -195,6 +195,75 @@ def test_prep_vacancy_flow_reuses_existing_complete_record(tmp_path, monkeypatch
     assert application_calls == [("acme--senior-pm", "2026-05-12", None)]
 
 
+def test_prep_vacancy_flow_ignores_existing_record_without_title(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(prep_module, "today", lambda: "2026-05-13")
+    vacancy_dir = Path("data/2026-05-12/vacancies")
+    score_dir = Path("data/2026-05-12/scores")
+    vacancy_dir.mkdir(parents=True)
+    score_dir.mkdir(parents=True)
+    (vacancy_dir / "typeform--none.json").write_text(
+        json.dumps(
+            {
+                "id": "typeform--none",
+                "company": "Typeform",
+                "title": None,
+                "url": "https://job-boards.greenhouse.io/typeform/jobs/7905221",
+                "description": "Existing description",
+                "questions": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (score_dir / "typeform--none.json").write_text(
+        json.dumps(
+            {
+                "vacancy_id": "typeform--none",
+                "date": "2026-05-12",
+                "company": "Typeform",
+                "title": None,
+                "score": 80,
+                "status": "approved",
+                "requires_cover_letter": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    application_calls: list[tuple[str, str, object]] = []
+
+    class _ApplicationFlow:
+        def __init__(self, vacancy_id: str, date: str, notifier):
+            self.vacancy_id = vacancy_id
+            self.date = date
+            self.notifier = notifier
+
+        def kickoff(self) -> None:
+            application_calls.append((self.vacancy_id, self.date, self.notifier))
+
+    flow = PrepVacancyFlow(
+        url="https://job-boards.greenhouse.io/typeform/jobs/7905221",
+        chat_id=12345,
+        user_id=777,
+        extractor=lambda url: PreparedVacancy(
+            company="Typeform",
+            title="Senior Product Manager - Growth",
+            description="Own growth.",
+            questions=[],
+            requires_cover_letter=False,
+        ),
+        application_flow_factory=_ApplicationFlow,
+        notifier=_Notifier(),
+    )
+
+    result = flow.kickoff()
+
+    assert result["vacancy_id"] == "typeform--senior-product-manager-growth"
+    assert result["date"] == "2026-05-13"
+    assert application_calls == [
+        ("typeform--senior-product-manager-growth", "2026-05-13", None)
+    ]
+
+
 def test_prep_vacancy_flow_reports_extraction_failure(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(prep_module, "today", lambda: "2026-05-13")
@@ -236,3 +305,22 @@ def test_parse_direct_vacancy_result_accepts_json_payload():
         questions=["Why this role?"],
         requires_cover_letter=False,
     )
+
+
+def test_parse_direct_vacancy_result_rejects_null_title():
+    payload = json.dumps(
+        {
+            "company": "Typeform",
+            "title": None,
+            "description": "Own product growth.",
+            "questions": [],
+            "requires_cover_letter": False,
+        }
+    )
+
+    try:
+        prep_module.parse_direct_vacancy_result(payload)
+    except ValueError as exc:
+        assert "could not extract title" in str(exc)
+    else:
+        raise AssertionError("Expected null title to be rejected")

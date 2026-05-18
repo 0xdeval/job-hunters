@@ -44,6 +44,16 @@ def make_vacancy_id(company: str, title: str) -> str:
     return f"{_slugify(company)}--{_slugify(title)}"
 
 
+def _required_text(data: dict, key: str) -> str:
+    value = data.get(key)
+    if not isinstance(value, str):
+        return ""
+    value = value.strip()
+    if value.lower() in {"none", "null"}:
+        return ""
+    return value
+
+
 def parse_direct_vacancy_result(raw: object) -> PreparedVacancy:
     if hasattr(raw, "raw"):
         raw = raw.raw
@@ -51,9 +61,9 @@ def parse_direct_vacancy_result(raw: object) -> PreparedVacancy:
         raw = str(raw)
 
     data = json.loads(raw)
-    company = str(data.get("company", "")).strip()
-    title = str(data.get("title", "")).strip()
-    description = str(data.get("description", "")).strip()
+    company = _required_text(data, "company")
+    title = _required_text(data, "title")
+    description = _required_text(data, "description")
     questions = data.get("questions") or []
 
     if not isinstance(questions, list):
@@ -198,6 +208,11 @@ class PrepVacancyFlow(Flow):
                 continue
             if vacancy.get("url") != self._url:
                 continue
+            if not all(
+                _required_text(vacancy, key)
+                for key in ("company", "title", "description")
+            ):
+                continue
             run_date = vacancy_file.parents[1].name
             vacancy_id = vacancy.get("id") or vacancy_file.stem
             score_file = scores_dir(run_date) / f"{vacancy_id}.json"
@@ -280,14 +295,14 @@ class PrepVacancyFlow(Flow):
             company, title, "QA", [".md"], ["qa-answers.md"]
         )
         cv_candidates = artifact_filename_candidates(
-            company, title, "CV", [".pdf", ".tex"], ["cv.pdf", "cv.tex"]
+            company, title, "CV", [".pdf"], ["cv.pdf"]
         )
         cover_letter_candidates = artifact_filename_candidates(
             company,
             title,
             "CoverLetter",
-            [".pdf", ".tex"],
-            ["cover-letter.pdf", "cover-letter.tex"],
+            [".pdf"],
+            ["cover-letter.pdf"],
         )
 
         if any((app_dir / candidate).exists() for candidate in qa_candidates):
