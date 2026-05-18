@@ -81,7 +81,8 @@ export CHROMEDRIVER_PATH=/snap/bin/chromium.chromedriver
 ```
 
 The launch commands check these prerequisites and return a clear error if the
-browser or driver is not found.
+browser or driver is not found. The scraper uses modern headless mode and a
+temporary Chrome profile directory for VPS/server environments.
 
 ### 2. Configure environment
 

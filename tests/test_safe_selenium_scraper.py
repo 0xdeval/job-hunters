@@ -92,3 +92,16 @@ def test_require_chromedriver_raises_clear_install_message(monkeypatch):
         assert "CHROMEDRIVER_PATH=/snap/bin/chromium.chromedriver" in message
     else:
         raise AssertionError("Expected missing driver to fail before launch")
+
+
+def test_build_chrome_options_uses_linux_server_startup_flags(monkeypatch):
+    monkeypatch.setattr(scraper, "_find_chrome_binary", lambda: "/snap/bin/chromium")
+
+    options = scraper._build_chrome_options("/tmp/job-hunting-chrome-profile")
+
+    assert options.binary_location == "/snap/bin/chromium"
+    assert "--headless=new" in options.arguments
+    assert "--no-sandbox" in options.arguments
+    assert "--disable-dev-shm-usage" in options.arguments
+    assert "--remote-debugging-port=0" in options.arguments
+    assert "--user-data-dir=/tmp/job-hunting-chrome-profile" in options.arguments
